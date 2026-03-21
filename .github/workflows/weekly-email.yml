@@ -1,0 +1,23 @@
+name: Weekly Calendar Email
+
+on:
+  schedule:
+    # Every Monday at 3pm UTC = 7am PST
+    - cron: '0 15 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  send-email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm install @supabase/supabase-js
+
+      - run: node send_weekly_email.js
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
