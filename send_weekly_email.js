@@ -57,6 +57,46 @@ function buildEmailHTML(trips) {
       weekDays.push({ date: wd, str: toDateStr(wd) });
     }
 
+    // Assign consistent slot positions for trips this week
+    const seenIds = new Set();
+    const weekTrips = [];
+    weekDays.forEach(({ str }) => {
+      trips.forEach(trip => {
+        const start = trip.start_date.split('T')[0];
+        const end = trip.end_date.split('T')[0];
+        if (str >= start && str <= end && !seenIds.has(trip.id)) {
+          seenIds.add(trip.id);
+          weekTrips.push(trip);
+        }
+      });
+    });
+    weekTrips.sort((a, b) => {
+      const cmp = a.start_date.split('T')[0].localeCompare(b.start_date.split('T')[0]);
+      return cmp !== 0 ? cmp : b.end_date.split('T')[0].localeCompare(a.end_date.split('T')[0]);
+    });
+
+    // Build slot map: each trip gets a fixed row index
+    const slotRows = [];
+    const tripSlot = {};
+    weekTrips.forEach(trip => {
+      const start = trip.start_date.split('T')[0];
+      const end = trip.end_date.split('T')[0];
+      let s = weekDays.findIndex(d => d.str >= start);
+      if (s === -1) s = 0;
+      let e = 6;
+      for (let i = 6; i >= 0; i--) { if (weekDays[i].str <= end) { e = i; break; } }
+      let row = 0;
+      while (true) {
+        if (!slotRows[row]) { slotRows[row] = []; break; }
+        if (!slotRows[row].some(b => s <= b.e && e >= b.s)) break;
+        row++;
+      }
+      slotRows[row] = slotRows[row] || [];
+      slotRows[row].push({ s, e });
+      tripSlot[trip.id] = row;
+    });
+    const totalSlots = slotRows.length;
+
     // Single row per week — badges inside each cell, 80px height
     weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
@@ -69,8 +109,21 @@ function buildEmailHTML(trips) {
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
       const dayTrips = getTripsForDay(str, trips);
-      let badgesHtml = '';
+
+      // Build slots array — empty slots get a transparent placeholder
+      const slots = new Array(totalSlots).fill(null);
       dayTrips.forEach(trip => {
+        const row = tripSlot[trip.id];
+        if (row !== undefined) slots[row] = trip;
+      });
+
+      let badgesHtml = '';
+      slots.forEach((trip, slotIdx) => {
+        if (!trip) {
+          // Empty placeholder to maintain alignment
+          badgesHtml += `<div style="height:20px;margin-top:3px;">&nbsp;</div>`;
+          return;
+        }
         const color = getColor(trip.created_by);
         const tripStart = trip.start_date.split('T')[0];
         const tripEnd = trip.end_date.split('T')[0];
