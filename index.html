@@ -496,19 +496,35 @@
     }
 
     @media (max-width: 768px) {
-      body {
+      html, body {
         padding: 0;
-        overflow: auto;
-        height: auto;
+        overflow: auto !important;
+        height: auto !important;
+        -webkit-overflow-scrolling: touch;
       }
 
       .container {
-        height: auto;
-        min-height: 100vh;
+        height: auto !important;
+        min-height: auto;
         width: 100vw;
         border-radius: 0;
         max-width: 100vw;
-        overflow: visible;
+        overflow: visible !important;
+      }
+
+      .week-grid {
+        position: static;
+      }
+
+      .multi-day-event {
+        display: none !important;
+      }
+
+      .day-trips {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 2px;
       }
 
       .header {
@@ -788,42 +804,42 @@
           weekDays.push(toLocalDateStr(wd));
         }
 
-        // Render multi-day spanning bars — stack overlapping ones
-        const barRows = [];
-        weekMultiDay.forEach(trip => {
-          const start = trip.start_date.split('T')[0];
-          const end = trip.end_date.split('T')[0];
-          // Find offset by matching date strings — no timezone math
-          let startOffset = weekDays.findIndex(d => d >= start);
-          if (startOffset === -1) startOffset = 0;
-          let endOffset = 6;
-          for (let i = 6; i >= 0; i--) {
-            if (weekDays[i] <= end) { endOffset = i; break; }
-          }
-          const daysShown = endOffset - startOffset + 1;
+        if (!isMobile) {
+          // DESKTOP: Render multi-day spanning bars with absolute positioning
+          const barRows = [];
+          weekMultiDay.forEach(trip => {
+            const start = trip.start_date.split('T')[0];
+            const end = trip.end_date.split('T')[0];
+            let startOffset = weekDays.findIndex(d => d >= start);
+            if (startOffset === -1) startOffset = 0;
+            let endOffset = 6;
+            for (let i = 6; i >= 0; i--) {
+              if (weekDays[i] <= end) { endOffset = i; break; }
+            }
+            const daysShown = endOffset - startOffset + 1;
 
-          // Find the first row where this bar doesn't overlap
-          let row = 0;
-          while (true) {
-            if (!barRows[row]) { barRows[row] = []; break; }
-            const conflict = barRows[row].some(b => startOffset <= b.end && endOffset >= b.start);
-            if (!conflict) break;
-            row++;
-          }
-          barRows[row] = barRows[row] || [];
-          barRows[row].push({ start: startOffset, end: endOffset });
+            let row = 0;
+            while (true) {
+              if (!barRows[row]) { barRows[row] = []; break; }
+              const conflict = barRows[row].some(b => startOffset <= b.end && endOffset >= b.start);
+              if (!conflict) break;
+              row++;
+            }
+            barRows[row] = barRows[row] || [];
+            barRows[row].push({ start: startOffset, end: endOffset });
 
-          const topPx = 18 + row * 28;
-          const cellWidth = (100 / 7);
-          const left = cellWidth * startOffset;
-          const width = cellWidth * daysShown;
+            const topPx = 18 + row * 28;
+            const cellWidth = (100 / 7);
+            const left = cellWidth * startOffset;
+            const width = cellWidth * daysShown;
 
-          html += `
-            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 3px); width: calc(${width}% - 6px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
-              ${trip.name}
-            </div>
-          `;
-        });
+            html += `
+              <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 3px); width: calc(${width}% - 6px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
+                ${trip.name}
+              </div>
+            `;
+          });
+        }
 
         for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
           const dayDate = new Date(weekStart);
@@ -837,17 +853,26 @@
           const thisMonth = dayDate.getMonth();
           const monthClass = thisMonth % 2 === 0 ? 'month-even' : 'month-odd';
 
-          // Check if this is the 1st of a month — show month label
           const monthLabel = dayNum === 1 ? dayDate.toLocaleDateString('en-US', { month: 'short' }) : '';
-
-          // Check if previous day was a different month — add left border
-          const prevDay = new Date(dayDate);
-          prevDay.setDate(prevDay.getDate() - 1);
           const isMonthStart = dayNum === 1 && dayOffset > 0 ? 'month-border' : '';
+
+          // MOBILE: show all trips as badges inside each day cell
+          let tripsHtml = '';
+          if (isMobile) {
+            const dayTrips = trips.filter(trip => {
+              const start = trip.start_date.split('T')[0];
+              const end = trip.end_date.split('T')[0];
+              return dateStr >= start && dateStr <= end;
+            });
+            dayTrips.forEach(trip => {
+              tripsHtml += `<div class="trip-badge ${trip.created_by}" onclick="event.stopPropagation(); editTrip('${trip.id}')">${trip.name}</div>`;
+            });
+          }
 
           html += `
             <div class="day ${isToday} ${monthClass} ${isMonthStart}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
               <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span> ' : ''}${dayNum}</div>
+              ${tripsHtml ? '<div class="day-trips">' + tripsHtml + '</div>' : ''}
             </div>
           `;
         }
