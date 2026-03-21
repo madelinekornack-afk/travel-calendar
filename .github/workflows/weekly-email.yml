@@ -16,8 +16,9 @@ jobs:
         with:
           node-version: '20'
 
-      - run: npm install @supabase/supabase-js
+      - run: npm install @supabase/supabase-js nodemailer
 
       - run: node send_weekly_email.js
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}

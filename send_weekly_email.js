@@ -1,13 +1,11 @@
 // Weekly calendar email — runs via GitHub Actions every Monday 7am PST
 const { createClient } = require('@supabase/supabase-js');
+const nodemailer = require('nodemailer');
 
 const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-// Note: Resend free tier only sends to account owner email until a domain is verified
-// Once verified, add 'pondrejack@gmail.com' back
-const RECIPIENTS = ['madelinekornack@gmail.com'];
+const RECIPIENTS = ['madelinekornack@gmail.com', 'pondrejack@gmail.com'];
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -179,20 +177,25 @@ async function main() {
 
   const emailHTML = buildEmailHTML(trips);
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'Maddy & Phil Calendar <onboarding@resend.dev>',
-      to: RECIPIENTS,
-      subject: `💕 Weekly Calendar — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-      html: emailHTML,
-    }),
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
   });
 
-  const result = await res.json();
-  if (!res.ok) { console.error('Resend error:', result); process.exit(1); }
-  console.log('Email sent successfully:', result.id);
+  const subject = `💕 Weekly Calendar — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  for (const recipient of RECIPIENTS) {
+    await transporter.sendMail({
+      from: `"Maddy & Phil Calendar" <${process.env.GMAIL_USER}>`,
+      to: recipient,
+      subject,
+      html: emailHTML,
+    });
+    console.log(`Email sent to ${recipient}`);
+  }
 }
 
 main();
