@@ -469,15 +469,9 @@
       }
 
       .header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        padding: 8px 12px;
+        display: none;
       }
 
-      .header h1 { font-size: 16px; }
       .nav-buttons { display: none; }
 
       /* Fixed weekday bar on mobile */
@@ -485,20 +479,20 @@
         display: grid !important;
         grid-template-columns: repeat(7, 1fr);
         position: fixed;
-        top: 38px;
+        top: 0;
         left: 0;
         right: 0;
         z-index: 99;
         background: white;
-        border-bottom: 1px solid #e0e0e0;
-        padding: 4px 0;
+        border-bottom: 1px solid #ddd;
+        padding: 6px 0;
       }
 
       .calendar-wrapper {
         overflow: visible !important;
         flex: none !important;
         padding: 2px;
-        padding-top: 60px !important;
+        padding-top: 30px !important;
         display: block;
         height: auto !important;
       }
@@ -508,8 +502,7 @@
         display: block;
       }
 
-      .month-header { margin-bottom: 4px; }
-      .month-header h2 { font-size: 14px; }
+      .month-header { display: none; }
 
       /* Hide JS-rendered weekdays on mobile */
       .month-view .weekdays {
