@@ -123,6 +123,10 @@
       display: none;
     }
 
+    .mobile-only-weekdays {
+      display: none;
+    }
+
     .week-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
@@ -490,7 +494,14 @@
       .month-header { margin-bottom: 4px; }
       .month-header h2 { font-size: 14px; }
 
-      .weekdays {
+      /* Hide JS-rendered weekdays on mobile */
+      .month-view .weekdays {
+        display: none;
+      }
+
+      /* Show the fixed sticky weekdays */
+      .mobile-only-weekdays {
+        display: grid !important;
         position: sticky;
         top: 36px;
         z-index: 99;
@@ -582,6 +593,15 @@
 
     <div class="calendar-wrapper">
       <div id="message"></div>
+      <div id="mobileWeekdays" class="weekdays mobile-only-weekdays">
+        <div class="weekday">Mon</div>
+        <div class="weekday">Tue</div>
+        <div class="weekday">Wed</div>
+        <div class="weekday">Thu</div>
+        <div class="weekday">Fri</div>
+        <div class="weekday">Sat</div>
+        <div class="weekday">Sun</div>
+      </div>
       <div id="calendar" class="month-view">
         <div class="loading">Loading calendar...</div>
       </div>
