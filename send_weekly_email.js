@@ -131,32 +131,7 @@ function buildEmailHTML(trips) {
         const isLast = str === tripEnd || (str === weekDays[6].str && tripEnd > weekDays[6].str);
         const isSingleDay = tripStart === tripEnd;
 
-        // Split trip name across days so text flows continuously
-        const charsPerDay = 14;
-        let label;
-        if (isSingleDay) {
-          label = trip.name;
-        } else {
-          const tripStartDate = new Date(tripStart.replace(/-/g, '/'));
-          const thisDate = new Date(str.replace(/-/g, '/'));
-          const dayIndex = Math.round((thisDate - tripStartDate) / (1000*60*60*24));
-          // If trip started before this week, adjust dayIndex
-          const weekStartStr = weekDays[0].str;
-          let adjustedIndex = dayIndex;
-          if (tripStart < weekStartStr) {
-            const weekStartDate = new Date(weekStartStr.replace(/-/g, '/'));
-            adjustedIndex = Math.round((thisDate - weekStartDate) / (1000*60*60*24));
-            // Skip chars that would have shown before this week
-            const preWeekDays = Math.round((weekStartDate - tripStartDate) / (1000*60*60*24));
-            adjustedIndex = preWeekDays + adjustedIndex;
-          }
-          const startChar = adjustedIndex * charsPerDay;
-          if (startChar < trip.name.length) {
-            label = trip.name.substring(startChar, startChar + charsPerDay);
-          } else {
-            label = '&nbsp;';
-          }
-        }
+        const label = isFirst || isSingleDay ? trip.name : '&nbsp;';
         const pLeft = isFirst || isSingleDay ? '5px' : '0';
         const pRight = isLast || isSingleDay ? '5px' : '0';
         const rTL = isFirst || isSingleDay ? '4px' : '0';
