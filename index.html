@@ -460,24 +460,121 @@
       color: #1e3a8a;
     }
 
+    .legend {
+      display: flex;
+      gap: 16px;
+      padding: 10px 30px;
+      border-top: 1px solid #e0e0e0;
+      align-items: center;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+
+    .legend-swatch.madeline {
+      background: linear-gradient(135deg, #e8815c, #e09070);
+    }
+
+    .legend-swatch.fiance {
+      background: linear-gradient(135deg, #4a90a4, #5a9aad);
+    }
+
+    .legend-swatch.both {
+      background: linear-gradient(135deg, #9a7bb5, #a485bf);
+    }
+
     @media (max-width: 768px) {
       .container {
         height: auto;
         width: 100vw;
+        border-radius: 0;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .header {
+        padding: 12px 15px;
+        flex-direction: row;
+        gap: 8px;
+      }
+
+      .header h1 {
+        font-size: 18px;
+      }
+
+      .nav-buttons button {
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+
+      .calendar-wrapper {
+        padding: 8px;
+      }
+
+      .month-header h2 {
+        font-size: 16px;
+      }
+
+      .weekday {
+        font-size: 11px;
+        padding: 6px 0;
+      }
+
+      .week-grid {
+        gap: 2px;
+        margin-bottom: 4px;
       }
 
       .day {
         aspect-ratio: auto;
-        min-height: 60px;
+        min-height: 50px;
+        padding: 2px;
       }
 
-      .header {
-        flex-direction: column;
-        gap: 8px;
+      .day-number {
+        font-size: 10px;
       }
 
-      .calendar-wrapper {
-        padding: 10px;
+      .multi-day-event {
+        height: 20px !important;
+        font-size: 9px !important;
+        padding: 2px 4px !important;
+        border-radius: 4px;
+      }
+
+      .trip-badge {
+        font-size: 9px;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+
+      .month-label {
+        font-size: 8px;
+      }
+
+      .legend {
+        padding: 8px 15px;
+        gap: 12px;
+        font-size: 11px;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 20px;
       }
     }
   </style>
@@ -498,6 +595,11 @@
       <div id="calendar" class="month-view">
         <div class="loading">Loading calendar...</div>
       </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch madeline"></div> Madeline</div>
+      <div class="legend-item"><div class="legend-swatch fiance"></div> Phil</div>
+      <div class="legend-item"><div class="legend-swatch both"></div> Both</div>
     </div>
   </div>
 
