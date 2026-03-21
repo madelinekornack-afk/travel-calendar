@@ -940,6 +940,23 @@
     await fetchTrips();
     renderCalendar();
 
+    // Desktop: mouse wheel scrolls weeks
+    if (!isMobile) {
+      let wheelDebounce = null;
+      document.querySelector('.calendar-wrapper').addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (wheelDebounce) return;
+        wheelDebounce = true;
+        if (e.deltaY > 0) {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else {
+          currentDate.setDate(currentDate.getDate() - 7);
+        }
+        renderCalendar();
+        setTimeout(() => { wheelDebounce = false; }, 200);
+      }, { passive: false });
+    }
+
     // Mobile infinite scroll — load more weeks at top/bottom
     if (isMobile) {
       let scrollReady = false;
