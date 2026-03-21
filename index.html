@@ -671,16 +671,26 @@
       return `${y}-${m}-${day}`;
     }
 
+    // Mobile infinite scroll state
+    let mobileWeeksBefore = 0;
+    let mobileWeeksAfter = 8;
+
     function renderCalendar() {
       const date = new Date(currentDate);
       const day = date.getDay();
       const diff = date.getDate() - day + (day === 0 ? -6 : 1);
 
-      const weeksToShow = isMobile ? 8 : 5;
-      const weeksBefore = isMobile ? 2 : 0;
-
       const startDate = new Date(date.setDate(diff));
-      if (isMobile) startDate.setDate(startDate.getDate() - weeksBefore * 7);
+
+      let weeksToShow, weeksBefore;
+      if (isMobile) {
+        weeksToShow = mobileWeeksBefore + mobileWeeksAfter;
+        weeksBefore = mobileWeeksBefore;
+        startDate.setDate(startDate.getDate() - weeksBefore * 7);
+      } else {
+        weeksToShow = 5;
+        weeksBefore = 0;
+      }
 
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + weeksToShow * 7 - 1);
@@ -935,6 +945,32 @@
 
     await fetchTrips();
     renderCalendar();
+
+    // Mobile infinite scroll — load more weeks at top/bottom
+    if (isMobile) {
+      window.addEventListener('scroll', () => {
+        const scrollTop = window.scrollY;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = window.innerHeight;
+
+        // Near bottom — add more future weeks
+        if (scrollTop + clientHeight >= scrollHeight - 100) {
+          mobileWeeksAfter += 4;
+          const oldHeight = scrollHeight;
+          renderCalendar();
+        }
+
+        // Near top — add more past weeks
+        if (scrollTop <= 50) {
+          const oldHeight = document.documentElement.scrollHeight;
+          mobileWeeksBefore += 4;
+          renderCalendar();
+          // Keep scroll position so it doesn't jump to top
+          const newHeight = document.documentElement.scrollHeight;
+          window.scrollTo(0, scrollTop + (newHeight - oldHeight));
+        }
+      });
+    }
 
     setInterval(async () => {
       await fetchTrips();
