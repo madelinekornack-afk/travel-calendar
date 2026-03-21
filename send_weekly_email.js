@@ -74,21 +74,17 @@ function buildEmailHTML(trips) {
         const color = getColor(trip.created_by);
         const tripStart = trip.start_date.split('T')[0];
         const tripEnd = trip.end_date.split('T')[0];
-
-        // First day of trip (or first day of this week): show name, no left radius
-        // Last day: no right radius
-        // Middle day: no radius, just color bar
         const isFirst = str === tripStart || str === weekDays[0].str;
-        const isLast = str === tripEnd || str === weekDays[6].str;
+        const isSingleDay = tripStart === tripEnd;
 
-        const borderRadius = isFirst && isLast ? '5px'
-          : isFirst ? '5px 0 0 5px'
-          : isLast ? '0 5px 5px 0'
-          : '0';
+        let label;
+        if (isSingleDay || isFirst) {
+          label = trip.name;
+        } else {
+          label = '→';
+        }
 
-        const label = isFirst ? trip.name : '&nbsp;';
-
-        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 4px;border-radius:${borderRadius};margin-top:3px;margin-left:${isFirst ? '0' : '-5px'};margin-right:${isLast ? '0' : '-5px'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px rgba(0,0,0,0.12);">${label}</div>`;
+        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>`;
       });
 
       weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
