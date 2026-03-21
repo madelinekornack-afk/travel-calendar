@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Calendar</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100vw;
+      height: 100vh;
+      background: white;
+      border-radius: 0;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 8px 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .nav-buttons button {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: background 0.2s;
+    }
+
+    .nav-buttons button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .calendar-wrapper {
+      flex: 1;
+      overflow: hidden;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .month-view {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .month-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    .month-header h2 {
+      font-size: 18px;
+      color: #333;
+      margin: 0;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      margin-bottom: 3px;
+      flex-shrink: 0;
+    }
+
+    .weekday {
+      text-align: center;
+      font-weight: 600;
+      color: #666;
+      padding: 3px 0;
+      font-size: 12px;
+    }
+
+    .week-events {
+      display: none;
+    }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 3px;
+      flex: 1;
+      min-height: 0;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .multi-day-event {
+      padding: 2px 3px !important;
+      font-size: 10px !important;
+      font-weight: 500;
+      border-radius: 2px;
+      border: none !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      position: absolute;
+      top: 16px;
+      height: 18px;
+      z-index: 10;
+    }
+
+    .multi-day-event:hover {
+      opacity: 0.85;
+      outline: 1.5px solid rgba(0,0,0,0.3);
+    }
+
+    .day {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 3px;
+      padding-top: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+      overflow: visible;
+      position: relative;
+      font-size: 9px;
+      display: flex;
+      flex-direction: column;
+      min-height: 50px;
+    }
+
+    .day.today {
+      background: #fef3c7;
+      border: 1.5px solid #f59e0b;
+      box-shadow: inset 0 0 8px rgba(245, 158, 11, 0.2);
+    }
+
+    .day:hover {
+      border-color: #667eea;
+      background: #f0f3ff;
+    }
+
+    .day.april {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .day.march {
+      background: #ffffff;
+    }
+
+    .day.today:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .day.april:hover {
+      background: #e5e7eb;
+      border-color: #667eea;
+    }
+
+    .day.other-month {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .day.other-month:hover {
+      border-color: #e0e0e0;
+      background: #f9f9f9;
+    }
+
+    .day.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .day-number {
+      font-weight: 600;
+      font-size: 11px;
+      margin-bottom: 2px;
+      color: #333;
+      line-height: 1;
+    }
+
+    .day.april .day-number {
+      color: #6b7280;
+    }
+
+    .day.today .day-number {
+      color: #92400e;
+    }
+
+    .day.selected .day-number {
+      color: white;
+    }
+
+    .day-trips {
+      font-size: 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .trip-badge {
+      padding: 2px 3px;
+      border-radius: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 1.2;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .trip-badge:hover {
+      opacity: 0.85;
+      outline: 1.5px solid rgba(0,0,0,0.3);
+    }
+
+    .trip-badge.madeline {
+      background: #fbbf24;
+      color: #78350f;
+    }
+
+    .trip-badge.fiance {
+      background: #60a5fa;
+      color: #1e3a8a;
+    }
+
+    .trip-badge.both {
+      background: #a78bfa;
+      color: #5b21b6;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      width: 90%;
+      max-width: 450px;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 15px;
+      color: #333;
+      font-size: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .form-buttons button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #d0d0d0;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #667eea;
+      font-size: 13px;
+    }
+
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c33;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+
+    .success {
+      background: #efe;
+      border: 1px solid #cfc;
+      color: #3c3;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+
+    .trip-list modal-content {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .trip-item {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .trip-info {
+      flex: 1;
+    }
+
+    .trip-name {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 2px;
+      font-size: 12px;
+    }
+
+    .trip-dates {
+      font-size: 11px;
+      color: #666;
+    }
+
+    .trip-person {
+      font-size: 10px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      margin-bottom: 4px;
+    }
+
+    .trip-person.madeline {
+      background: #fbbf24;
+      color: #78350f;
+    }
+
+    .trip-person.fiance {
+      background: #60a5fa;
+      color: #1e3a8a;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        height: auto;
+        width: 100vw;
+      }
+
+      .day {
+        aspect-ratio: auto;
+        min-height: 60px;
+      }
+
+      .header {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .calendar-wrapper {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✈️ Travel Calendar</h1>
+      <div class="nav-buttons">
+        <button onclick="previousMonth()">← Previous</button>
+        <button onclick="currentMonth()">Today</button>
+        <button onclick="nextMonth()">Next →</button>
+      </div>
+    </div>
+
+    <div class="calendar-wrapper">
+      <div id="message"></div>
+      <div id="calendar" class="month-view">
+        <div class="loading">Loading calendar...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Trip Modal -->
+  <div id="tripModal" class="modal">
+    <div class="modal-content">
+      <h3 id="modalTitle">Add Trip</h3>
+      <form id="tripForm" onsubmit="saveTrip(event)">
+        <div class="form-group">
+          <label for="tripName">Trip Name / Destination *</label>
+          <input type="text" id="tripName" required placeholder="e.g., Hawaii Vacation">
+        </div>
+
+        <div class="form-group">
+          <label for="tripStartDate">Start Date *</label>
+          <input type="date" id="tripStartDate" required>
+        </div>
+
+        <div class="form-group">
+          <label for="tripEndDate">End Date *</label>
+          <input type="date" id="tripEndDate" required>
+        </div>
+
+        <div class="form-group">
+          <label for="tripPerson">Who's Going? *</label>
+          <select id="tripPerson" required>
+            <option value="">Select...</option>
+            <option value="madeline">Madeline</option>
+            <option value="fiance">Fiancé (Phil)</option>
+            <option value="both">Both of us</option>
+          </select>
+        </div>
+
+        <div id="formError"></div>
+
+        <div class="form-buttons">
+          <button type="submit" class="btn-primary">Save Trip</button>
+          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="button" id="deleteBtn" class="btn-danger" onclick="deleteTrip()" style="display: none;">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm';
+
+    // Initialize Supabase
+    const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentDate = new Date();
+    let trips = [];
+    let selectedTrip = null;
+    let selectingRange = false;
+    let rangeStart = null;
+
+    window.previousMonth = () => {
+      currentDate.setDate(currentDate.getDate() - 7);
+      renderCalendar();
+    };
+
+    window.nextMonth = () => {
+      currentDate.setDate(currentDate.getDate() + 7);
+      renderCalendar();
+    };
+
+    window.currentMonth = () => {
+      currentDate = new Date();
+      renderCalendar();
+    };
+
+    async function fetchTrips() {
+      try {
+        const { data, error } = await supabase
+          .from('trips')
+          .select('*')
+          .order('start_date', { ascending: true });
+
+        if (error) throw error;
+        trips = data || [];
+      } catch (error) {
+        console.error('Error fetching trips:', error);
+        showMessage('Error loading trips: ' + error.message, 'error');
+      }
+    }
+
+    function toLocalDateStr(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function renderCalendar() {
+      // Get the Monday of the current week
+      const date = new Date(currentDate);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      const startDate = new Date(date.setDate(diff));
+
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 34);
+
+      let html = `
+        <div class="month-header">
+          <h2>${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</h2>
+        </div>
+
+        <div class="weekdays">
+          <div class="weekday">Mon</div>
+          <div class="weekday">Tue</div>
+          <div class="weekday">Wed</div>
+          <div class="weekday">Thu</div>
+          <div class="weekday">Fri</div>
+          <div class="weekday">Sat</div>
+          <div class="weekday">Sun</div>
+        </div>
+      `;
+
+      // Show 5 weeks
+      for (let week = 0; week < 5; week++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(weekStart.getDate() + week * 7);
+
+        // Find ALL trips visible this week
+        const seenIds = new Set();
+        const weekMultiDay = [];
+        for (let d = 0; d < 7; d++) {
+          const dd = new Date(weekStart);
+          dd.setDate(dd.getDate() + d);
+          const ds = toLocalDateStr(dd);
+          trips.forEach(trip => {
+            const start = trip.start_date.split('T')[0];
+            const end = trip.end_date.split('T')[0];
+            if (ds >= start && ds <= end && !seenIds.has(trip.id)) {
+              seenIds.add(trip.id);
+              weekMultiDay.push(trip);
+            }
+          });
+        }
+
+        html += `<div class="week-grid">`;
+
+        // Build lookup of date string -> day offset for this week
+        const weekDays = [];
+        for (let d = 0; d < 7; d++) {
+          const wd = new Date(weekStart);
+          wd.setDate(wd.getDate() + d);
+          weekDays.push(toLocalDateStr(wd));
+        }
+
+        // Render multi-day spanning bars — stack overlapping ones
+        const barRows = [];
+        weekMultiDay.forEach(trip => {
+          const start = trip.start_date.split('T')[0];
+          const end = trip.end_date.split('T')[0];
+          // Find offset by matching date strings — no timezone math
+          let startOffset = weekDays.findIndex(d => d >= start);
+          if (startOffset === -1) startOffset = 0;
+          let endOffset = 6;
+          for (let i = 6; i >= 0; i--) {
+            if (weekDays[i] <= end) { endOffset = i; break; }
+          }
+          const daysShown = endOffset - startOffset + 1;
+
+          // Find the first row where this bar doesn't overlap
+          let row = 0;
+          while (true) {
+            if (!barRows[row]) { barRows[row] = []; break; }
+            const conflict = barRows[row].some(b => startOffset <= b.end && endOffset >= b.start);
+            if (!conflict) break;
+            row++;
+          }
+          barRows[row] = barRows[row] || [];
+          barRows[row].push({ start: startOffset, end: endOffset });
+
+          const topPx = 16 + row * 20;
+          const cellWidth = (100 / 7);
+          const left = cellWidth * startOffset;
+          const width = cellWidth * daysShown;
+
+          html += `
+            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 3px); width: calc(${width}% - 6px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
+              ${trip.name}
+            </div>
+          `;
+        });
+
+        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+          const dayDate = new Date(weekStart);
+          dayDate.setDate(dayDate.getDate() + dayOffset);
+          const dateStr = toLocalDateStr(dayDate);
+
+          const dayNum = dayDate.getDate();
+          const today = new Date();
+          const todayStr = toLocalDateStr(today);
+          const isToday = dateStr === todayStr ? 'today' : '';
+          const currentMonth = dayDate.getMonth();
+          const monthClass = currentMonth === 2 ? 'march' : currentMonth === 3 ? 'april' : '';
+
+          html += `
+            <div class="day ${isToday} ${monthClass}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
+              <div class="day-number">${dayNum}</div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      }
+
+      document.getElementById('calendar').innerHTML = html;
+    }
+
+    window.editTrip = (tripId) => {
+      const trip = trips.find(t => t.id === tripId);
+      if (!trip) return;
+
+      selectedTrip = trip;
+      document.getElementById('modalTitle').textContent = 'Edit Trip';
+      document.getElementById('tripName').value = trip.name;
+      document.getElementById('tripStartDate').value = trip.start_date.split('T')[0];
+      document.getElementById('tripEndDate').value = trip.end_date.split('T')[0];
+      document.getElementById('tripPerson').value = trip.created_by;
+      document.getElementById('deleteBtn').style.display = 'block';
+      document.getElementById('formError').innerHTML = '';
+      document.getElementById('tripModal').classList.add('active');
+    };
+
+    window.openTripModal = (dateStr = null) => {
+      // If this day has trips, open the first one in edit mode
+      if (dateStr) {
+        const dayTrips = trips.filter(trip => {
+          const start = trip.start_date.split('T')[0];
+          const end = trip.end_date.split('T')[0];
+          return dateStr >= start && dateStr <= end;
+        });
+        if (dayTrips.length > 0) {
+          editTrip(dayTrips[0].id);
+          return;
+        }
+      }
+
+      document.getElementById('modalTitle').textContent = 'Add Trip';
+      document.getElementById('tripForm').reset();
+      document.getElementById('deleteBtn').style.display = 'none';
+      document.getElementById('formError').innerHTML = '';
+      selectedTrip = null;
+
+      if (dateStr) {
+        document.getElementById('tripStartDate').value = dateStr;
+        document.getElementById('tripEndDate').value = dateStr;
+      }
+
+      document.getElementById('tripModal').classList.add('active');
+    };
+
+    window.closeModal = () => {
+      document.getElementById('tripModal').classList.remove('active');
+    };
+
+    window.saveTrip = async (event) => {
+      event.preventDefault();
+
+      const name = document.getElementById('tripName').value.trim();
+      const startDate = document.getElementById('tripStartDate').value;
+      const endDate = document.getElementById('tripEndDate').value;
+      const createdBy = document.getElementById('tripPerson').value;
+
+      if (!name || !startDate || !endDate || !createdBy) {
+        document.getElementById('formError').innerHTML = '<div class="error">All fields are required</div>';
+        return;
+      }
+
+      if (startDate > endDate) {
+        document.getElementById('formError').innerHTML = '<div class="error">Start date must be before end date</div>';
+        return;
+      }
+
+      try {
+        if (selectedTrip) {
+          // Update existing trip
+          const { error } = await supabase
+            .from('trips')
+            .update({
+              name,
+              start_date: startDate,
+              end_date: endDate,
+              created_by: createdBy
+            })
+            .eq('id', selectedTrip.id);
+
+          if (error) throw error;
+          showMessage('Trip updated!', 'success');
+        } else {
+          // Create new trip
+          const { error } = await supabase
+            .from('trips')
+            .insert({
+              name,
+              start_date: startDate,
+              end_date: endDate,
+              created_by: createdBy
+            });
+
+          if (error) throw error;
+          showMessage('Trip added!', 'success');
+        }
+
+        await fetchTrips();
+        renderCalendar();
+        closeModal();
+      } catch (error) {
+        console.error('Error saving trip:', error);
+        document.getElementById('formError').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    };
+
+    window.deleteTrip = async () => {
+      if (!selectedTrip || !confirm('Delete this trip?')) return;
+
+      try {
+        const { error } = await supabase
+          .from('trips')
+          .delete()
+          .eq('id', selectedTrip.id);
+
+        if (error) throw error;
+
+        showMessage('Trip deleted!', 'success');
+        await fetchTrips();
+        renderCalendar();
+        closeModal();
+      } catch (error) {
+        console.error('Error deleting trip:', error);
+        document.getElementById('formError').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+      }
+    };
+
+    function showMessage(msg, type) {
+      const msgDiv = document.getElementById('message');
+      msgDiv.innerHTML = `<div class="${type}">${msg}</div>`;
+      setTimeout(() => {
+        msgDiv.innerHTML = '';
+      }, 4000);
+    }
+
+    // Initialize
+    window.addEventListener('click', (e) => {
+      if (e.target.id === 'tripModal') {
+        closeModal();
+      }
+    });
+
+    // Load and render
+    await fetchTrips();
+    renderCalendar();
+
+    // Refresh every 30 seconds
+    setInterval(async () => {
+      await fetchTrips();
+      renderCalendar();
+    }, 30000);
+  </script>
+</body>
+</html>
