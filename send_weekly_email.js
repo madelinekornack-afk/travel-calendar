@@ -150,9 +150,8 @@ function buildEmailHTML(trips) {
         const pRight = isLast || isSingleDay ? '5px' : '3px';
 
         if (isFirst && !isSingleDay && cellsRemaining > 1) {
-          // First day of multi-day: overflow visible for text
-          // Width stops before last cell so last cell's rounded bar shows
-          const widthPct = (cellsRemaining * 100) - 50;
+          // First day of multi-day: overflow visible for text, edge-to-edge on right
+          const widthPct = (cellsRemaining * 100);
           badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:${rLeft} 0 0 ${rLeft};margin-top:3px;margin-right:-6px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:20px;position:relative;z-index:2;">
             ${label}
           </div>`;
