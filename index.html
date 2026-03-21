@@ -857,18 +857,8 @@
     };
 
     window.openTripModal = (dateStr = null) => {
-      if (dateStr) {
-        const dayTrips = trips.filter(trip => {
-          const start = trip.start_date.split('T')[0];
-          const end = trip.end_date.split('T')[0];
-          return dateStr >= start && dateStr <= end;
-        });
-        if (dayTrips.length > 0) {
-          editTrip(dayTrips[0].id);
-          return;
-        }
-      }
-
+      // Always open Add Trip when clicking a day cell
+      // Clicking a bar directly calls editTrip instead
       document.getElementById('modalTitle').textContent = 'Add Trip';
       document.getElementById('tripForm').reset();
       document.getElementById('deleteBtn').style.display = 'none';
