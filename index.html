@@ -498,50 +498,64 @@
     @media (max-width: 768px) {
       .container {
         height: auto;
+        min-height: 100vh;
         width: 100vw;
         border-radius: 0;
+        max-width: 100vw;
       }
 
       body {
         padding: 0;
+        overflow: auto;
       }
 
       .header {
-        padding: 12px 15px;
+        padding: 10px 12px;
         flex-direction: row;
         gap: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+      }
+
+      .nav-buttons {
+        display: none;
       }
 
       .header h1 {
         font-size: 18px;
       }
 
-      .nav-buttons button {
-        padding: 6px 10px;
-        font-size: 13px;
-      }
-
       .calendar-wrapper {
-        padding: 8px;
+        padding: 6px;
+        overflow: visible;
       }
 
       .month-header h2 {
-        font-size: 16px;
+        font-size: 15px;
+      }
+
+      .weekdays {
+        position: sticky;
+        top: 50px;
+        z-index: 99;
+        background: white;
+        padding: 4px 0;
       }
 
       .weekday {
         font-size: 11px;
-        padding: 6px 0;
+        padding: 4px 0;
       }
 
       .week-grid {
         gap: 2px;
-        margin-bottom: 4px;
+        margin-bottom: 3px;
       }
 
       .day {
         aspect-ratio: auto;
-        min-height: 50px;
+        min-height: 48px;
         padding: 2px;
       }
 
@@ -550,10 +564,11 @@
       }
 
       .multi-day-event {
-        height: 20px !important;
+        height: 18px !important;
         font-size: 9px !important;
-        padding: 2px 4px !important;
+        padding: 1px 4px !important;
         border-radius: 4px;
+        top: 14px !important;
       }
 
       .trip-badge {
@@ -567,9 +582,12 @@
       }
 
       .legend {
-        padding: 8px 15px;
+        padding: 8px 12px;
         gap: 12px;
         font-size: 11px;
+        position: sticky;
+        bottom: 0;
+        background: white;
       }
 
       .modal-content {
@@ -696,15 +714,23 @@
       return `${y}-${m}-${day}`;
     }
 
+    const isMobile = window.innerWidth <= 768;
+
     function renderCalendar() {
       // Get the Monday of the current week
       const date = new Date(currentDate);
       const day = date.getDay();
       const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+
+      // On mobile, start 2 weeks before current week and show 12 weeks total
+      const weeksToShow = isMobile ? 12 : 5;
+      const weeksBefore = isMobile ? 2 : 0;
+
       const startDate = new Date(date.setDate(diff));
+      if (isMobile) startDate.setDate(startDate.getDate() - weeksBefore * 7);
 
       const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 34);
+      endDate.setDate(endDate.getDate() + weeksToShow * 7 - 1);
 
       let html = `
         <div class="month-header">
@@ -723,7 +749,7 @@
       `;
 
       // Show 5 weeks
-      for (let week = 0; week < 5; week++) {
+      for (let week = 0; week < weeksToShow; week++) {
         const weekStart = new Date(startDate);
         weekStart.setDate(weekStart.getDate() + week * 7);
 
