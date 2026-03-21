@@ -149,8 +149,8 @@ function buildEmailHTML(trips) {
             ${label}
           </div>`;
         } else if (!isFirst && !isSingleDay) {
-          // Continuation day: invisible placeholder (the first day's overflow covers this)
-          badgesHtml += `<div style="height:20px;margin-top:3px;">&nbsp;</div>`;
+          // Continuation day: colored bar with no text, same height
+          badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};">&nbsp;</div>`;
         } else {
           // Single day trip
           badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:14px;">
