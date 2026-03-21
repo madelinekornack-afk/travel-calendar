@@ -186,13 +186,12 @@
       background: #f0f3ff;
     }
 
-    .day.april {
-      background: #f3f4f6;
-      color: #6b7280;
+    .day.month-even {
+      background: #ffffff;
     }
 
-    .day.march {
-      background: #ffffff;
+    .day.month-odd {
+      background: #f5f3f0;
     }
 
     .day.today:hover {
@@ -200,19 +199,15 @@
       border-color: #f59e0b;
     }
 
-    .day.april:hover {
-      background: #e5e7eb;
-      border-color: #667eea;
+    .day.month-border {
+      border-left: 3px solid #667eea;
     }
 
-    .day.other-month {
-      opacity: 0.3;
-      cursor: default;
-    }
-
-    .day.other-month:hover {
-      border-color: #e0e0e0;
-      background: #f9f9f9;
+    .month-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #667eea;
+      text-transform: uppercase;
     }
 
     .day.selected {
@@ -227,10 +222,6 @@
       margin-bottom: 2px;
       color: #333;
       line-height: 1;
-    }
-
-    .day.april .day-number {
-      color: #6b7280;
     }
 
     .day.today .day-number {
@@ -713,12 +704,20 @@
           const today = new Date();
           const todayStr = toLocalDateStr(today);
           const isToday = dateStr === todayStr ? 'today' : '';
-          const currentMonth = dayDate.getMonth();
-          const monthClass = currentMonth === 2 ? 'march' : currentMonth === 3 ? 'april' : '';
+          const thisMonth = dayDate.getMonth();
+          const monthClass = thisMonth % 2 === 0 ? 'month-even' : 'month-odd';
+
+          // Check if this is the 1st of a month — show month label
+          const monthLabel = dayNum === 1 ? dayDate.toLocaleDateString('en-US', { month: 'short' }) : '';
+
+          // Check if previous day was a different month — add left border
+          const prevDay = new Date(dayDate);
+          prevDay.setDate(prevDay.getDate() - 1);
+          const isMonthStart = dayNum === 1 && dayOffset > 0 ? 'month-border' : '';
 
           html += `
-            <div class="day ${isToday} ${monthClass}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
-              <div class="day-number">${dayNum}</div>
+            <div class="day ${isToday} ${monthClass} ${isMonthStart}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
+              <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span> ' : ''}${dayNum}</div>
             </div>
           `;
         }
