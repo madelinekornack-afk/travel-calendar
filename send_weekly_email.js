@@ -131,7 +131,23 @@ function buildEmailHTML(trips) {
         const isLast = str === tripEnd || (str === weekDays[6].str && tripEnd > weekDays[6].str);
         const isSingleDay = tripStart === tripEnd;
 
-        const label = isFirst || isSingleDay ? trip.name : '&nbsp;';
+        // Show name on first day; on second day of multi-day trips, show "… continued" portion
+        let label;
+        if (isFirst || isSingleDay) {
+          label = trip.name;
+        } else {
+          // Show the part of the name that didn't fit on previous days
+          const charsPerDay = 14;
+          const tripStartDate = new Date(tripStart.replace(/-/g, '/'));
+          const thisDate = new Date(str.replace(/-/g, '/'));
+          const dayIndex = Math.round((thisDate - tripStartDate) / (1000*60*60*24));
+          const startChar = dayIndex * charsPerDay;
+          if (startChar < trip.name.length) {
+            label = trip.name.substring(startChar);
+          } else {
+            label = '&nbsp;';
+          }
+        }
         const pLeft = isFirst || isSingleDay ? '5px' : '0';
         const pRight = isLast || isSingleDay ? '5px' : '0';
         const rTL = isFirst || isSingleDay ? '4px' : '0';
