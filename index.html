@@ -469,8 +469,10 @@
       }
 
       .header {
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        right: 0;
         z-index: 100;
         padding: 8px 12px;
       }
@@ -478,10 +480,25 @@
       .header h1 { font-size: 16px; }
       .nav-buttons { display: none; }
 
+      /* Fixed weekday bar on mobile */
+      .mobile-weekday-bar {
+        display: grid !important;
+        grid-template-columns: repeat(7, 1fr);
+        position: fixed;
+        top: 38px;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 4px 0;
+      }
+
       .calendar-wrapper {
         overflow: visible !important;
         flex: none !important;
         padding: 2px;
+        padding-top: 60px !important;
         display: block;
         height: auto !important;
       }
@@ -497,26 +514,6 @@
       /* Hide JS-rendered weekdays on mobile */
       .month-view .weekdays {
         display: none;
-      }
-
-      /* Fixed weekday bar on mobile */
-      .mobile-weekday-bar {
-        display: grid !important;
-        grid-template-columns: repeat(7, 1fr);
-        position: fixed;
-        top: 36px;
-        left: 0;
-        right: 0;
-        z-index: 99;
-        background: white;
-        gap: 1px;
-        border-bottom: 1px solid #e0e0e0;
-        padding: 4px 0;
-      }
-
-      /* Push calendar content below fixed header + weekdays */
-      .calendar-wrapper {
-        padding-top: 28px !important;
       }
 
       .weekday {
