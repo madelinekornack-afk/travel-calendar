@@ -97,10 +97,7 @@ function buildEmailHTML(trips) {
     });
     const totalSlots = slotRows.length;
 
-    const numBarRows = totalSlots || 0;
-    const barHeight = numBarRows * 24;
-
-    // Day cells row
+    // Single row per week — badges inside each cell
     weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
       const { date, str } = weekDays[d];
@@ -111,47 +108,63 @@ function buildEmailHTML(trips) {
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
-      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:${40 + barHeight}px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
+      const dayTrips = getTripsForDay(str, trips);
+
+      // Build slots array for consistent positioning
+      const slots = new Array(totalSlots).fill(null);
+      dayTrips.forEach(trip => {
+        const row = tripSlot[trip.id];
+        if (row !== undefined) slots[row] = trip;
+      });
+
+      let badgesHtml = '';
+      slots.forEach(trip => {
+        if (!trip) {
+          badgesHtml += `<div style="height:20px;margin-top:3px;">&nbsp;</div>`;
+          return;
+        }
+        const color = getColor(trip.created_by);
+        const tripStart = trip.start_date.split('T')[0];
+        const tripEnd = trip.end_date.split('T')[0];
+        const isFirst = str === tripStart || (str === weekDays[0].str && tripStart < weekDays[0].str);
+        const isLast = str === tripEnd || (str === weekDays[6].str && tripEnd > weekDays[6].str);
+        const isSingleDay = tripStart === tripEnd;
+
+        // Calculate how many cells this trip spans from here to end of week
+        let cellsRemaining = 0;
+        if (isFirst && !isSingleDay) {
+          let e = 6;
+          for (let i = 6; i >= 0; i--) { if (weekDays[i].str <= tripEnd) { e = i; break; } }
+          cellsRemaining = e - d + 1;
+        }
+
+        const label = isFirst || isSingleDay ? trip.name : '';
+        const rLeft = isFirst || isSingleDay ? '4px' : '0';
+        const rRight = isLast || isSingleDay ? '4px' : '0';
+
+        if (isFirst && !isSingleDay && cellsRemaining > 1) {
+          // First day of multi-day: use overflow visible and a wide div
+          const widthPct = (cellsRemaining * 100) - 5;
+          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};margin-top:3px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:14px;position:relative;z-index:2;">
+            ${label}
+          </div>`;
+        } else if (!isFirst && !isSingleDay) {
+          // Continuation day: invisible placeholder (the first day's overflow covers this)
+          badgesHtml += `<div style="height:20px;margin-top:3px;">&nbsp;</div>`;
+        } else {
+          // Single day trip
+          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:14px;">
+            ${label}
+          </div>`;
+        }
+      });
+
+      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;overflow:visible;">
         ${monthLabel}${dayNum}
+        ${badgesHtml}
       </td>`;
     }
     weeksHtml += '</tr>';
-
-    // Trip bar rows using colspan — positioned to overlap into day cells above
-    for (let r = 0; r < numBarRows; r++) {
-      const rowTrips = [];
-      weekTrips.forEach(trip => {
-        if (tripSlot[trip.id] === r) {
-          const start = trip.start_date.split('T')[0];
-          const end = trip.end_date.split('T')[0];
-          let s = weekDays.findIndex(d => d.str >= start);
-          if (s === -1) s = 0;
-          let e = 6;
-          for (let i = 6; i >= 0; i--) { if (weekDays[i].str <= end) { e = i; break; } }
-          rowTrips.push({ trip, s, e });
-        }
-      });
-      rowTrips.sort((a, b) => a.s - b.s);
-
-      const pullUp = barHeight - (r * 24) + 4;
-      weeksHtml += `<tr style="height:0;">`;
-      let col = 0;
-      for (const tp of rowTrips) {
-        if (tp.s > col) {
-          weeksHtml += `<td colspan="${tp.s - col}" style="padding:0;height:0;line-height:0;font-size:0;"></td>`;
-        }
-        const span = tp.e - tp.s + 1;
-        const color = getColor(tp.trip.created_by);
-        weeksHtml += `<td colspan="${span}" style="padding:0 3px;height:0;vertical-align:bottom;">
-          <div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:4px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-${pullUp}px;height:20px;line-height:14px;">
-            ${tp.trip.name}
-          </div>
-        </td>`;
-        col = tp.e + 1;
-      }
-      if (col < 7) weeksHtml += `<td colspan="${7 - col}" style="padding:0;height:0;line-height:0;font-size:0;"></td>`;
-      weeksHtml += '</tr>';
-    }
   }
 
   return `<!DOCTYPE html>
@@ -168,7 +181,7 @@ function buildEmailHTML(trips) {
 
   <tr><td style="padding:16px;">
     <!-- Full calendar grid -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:collapse;">
       <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
         `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:8px 0;width:14.28%;">${d}</td>`
       ).join('')}</tr>
