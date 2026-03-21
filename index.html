@@ -650,6 +650,8 @@
             }
           });
         }
+        // Sort by start date so earlier trips are on top
+        weekMultiDay.sort((a, b) => a.start_date.split('T')[0].localeCompare(b.start_date.split('T')[0]));
 
         html += `<div class="week-grid">`;
 
