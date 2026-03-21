@@ -158,7 +158,8 @@ function buildEmailHTML(trips) {
         const mLeft = isFirst || isSingleDay ? '0' : '-1px';
         const mRight = isLast || isSingleDay ? '0' : '-1px';
 
-        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px ${pRight} 3px ${pLeft};border-radius:${rTL} ${rTR} ${rBR} ${rBL};margin-top:3px;margin-left:${mLeft};margin-right:${mRight};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1;">${label}</div>`;
+        const overflow = isLast || isSingleDay ? 'text-overflow:ellipsis;' : '';
+        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px ${pRight} 3px ${pLeft};border-radius:${rTL} ${rTR} ${rBR} ${rBL};margin-top:3px;margin-left:${mLeft};margin-right:${mRight};white-space:nowrap;overflow:hidden;${overflow}position:relative;z-index:1;">${label}</div>`;
       });
 
       weeksHtml += `<td style="background:${bg};border:${border};padding:4px 0;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;overflow:visible;">
