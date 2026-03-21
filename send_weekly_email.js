@@ -5,7 +5,8 @@ const nodemailer = require('nodemailer');
 const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
 
-const RECIPIENTS = ['madelinekornack@gmail.com', 'pondrejack@gmail.com'];
+// Testing: just Madeline. Add 'pondrejack@gmail.com' when ready
+const RECIPIENTS = ['madelinekornack@gmail.com'];
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -35,7 +36,7 @@ function buildEmailHTML(trips) {
   const dateRange = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   const todayStr = toDateStr(new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })));
 
-  let calendarRows = '';
+  let weeksHtml = '';
 
   for (let week = 0; week < weeksToShow; week++) {
     const weekStart = new Date(monday);
@@ -89,8 +90,13 @@ function buildEmailHTML(trips) {
       positions.push({ trip, s, e, row });
     });
 
+    const numBarRows = barRows.length;
+
+    // One table per week — day numbers + bar rows all inside
+    weeksHtml += `<table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-bottom:2px;">`;
+
     // Day number row
-    calendarRows += '<tr>';
+    weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
       const { date, str } = weekDays[d];
       const dayNum = date.getDate();
@@ -99,33 +105,43 @@ function buildEmailHTML(trips) {
       const bg = isToday ? '#fef3c7' : (thisMonth % 2 === 0 ? '#ffffff' : '#f5f3f0');
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
+      const rowspan = 1 + numBarRows;
 
-      calendarRows += `<td style="background:${bg};border:${border};border-radius:4px;padding:4px;vertical-align:top;height:${20 + barRows.length * 26}px;font-size:12px;font-weight:600;color:#333;">
+      weeksHtml += `<td rowspan="${rowspan}" style="background:${bg};border:${border};border-radius:4px;padding:4px;vertical-align:top;font-size:12px;font-weight:600;color:#333;width:14.28%;">
         ${monthLabel}${dayNum}
       </td>`;
     }
-    calendarRows += '</tr>';
+    weeksHtml += '</tr>';
 
-    // Trip bar rows
-    for (let r = 0; r < barRows.length; r++) {
-      const rowTrips = positions.filter(p => p.row === r).sort((a, b) => a.s - b.s);
-      calendarRows += '<tr>';
-      let col = 0;
-      for (const tp of rowTrips) {
-        if (tp.s > col) {
-          calendarRows += `<td colspan="${tp.s - col}"></td>`;
+    // Bar rows — use absolute-style trick: overlay cells on top of rowspanned day cells
+    // Since rowspan is tricky in email, use a different approach:
+    // Close the day table and open an overlay table for bars
+    weeksHtml += '</table>';
+
+    if (numBarRows > 0) {
+      weeksHtml += `<table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-top:-4px;margin-bottom:4px;">`;
+
+      for (let r = 0; r < numBarRows; r++) {
+        const rowTrips = positions.filter(p => p.row === r).sort((a, b) => a.s - b.s);
+        weeksHtml += '<tr>';
+        let col = 0;
+        for (const tp of rowTrips) {
+          if (tp.s > col) {
+            weeksHtml += `<td colspan="${tp.s - col}" style="padding:1px 2px;">&nbsp;</td>`;
+          }
+          const span = tp.e - tp.s + 1;
+          const color = getColor(tp.trip.created_by);
+          weeksHtml += `<td colspan="${span}" style="padding:1px 2px;">
+            <div style="background:${color};color:#fff;font-size:11px;font-weight:600;padding:5px 8px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+              ${tp.trip.name}
+            </div>
+          </td>`;
+          col = tp.e + 1;
         }
-        const span = tp.e - tp.s + 1;
-        const color = getColor(tp.trip.created_by);
-        calendarRows += `<td colspan="${span}" style="padding:1px 2px;">
-          <div style="background:${color};color:#fff;font-size:11px;font-weight:600;padding:4px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,0.15);">
-            ${tp.trip.name}
-          </div>
-        </td>`;
-        col = tp.e + 1;
+        if (col < 7) weeksHtml += `<td colspan="${7 - col}" style="padding:1px 2px;">&nbsp;</td>`;
+        weeksHtml += '</tr>';
       }
-      if (col < 7) calendarRows += `<td colspan="${7 - col}"></td>`;
-      calendarRows += '</tr>';
+      weeksHtml += '</table>';
     }
   }
 
@@ -142,13 +158,17 @@ function buildEmailHTML(trips) {
   </td></tr>
 
   <tr><td style="padding:16px;">
-    <table width="100%" cellpadding="0" cellspacing="2" style="table-layout:fixed;">
+    <!-- Weekday headers -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-bottom:2px;">
       <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
-        `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:6px 0;">${d}</td>`
+        `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:6px 0;width:14.28%;">${d}</td>`
       ).join('')}</tr>
-      ${calendarRows}
     </table>
 
+    <!-- Calendar weeks -->
+    ${weeksHtml}
+
+    <!-- Legend -->
     <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
       <tr>
         <td style="padding-right:16px;"><span style="display:inline-block;width:12px;height:12px;background:#e8815c;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#555;vertical-align:middle;">Madeline</span></td>
