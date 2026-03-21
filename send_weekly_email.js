@@ -57,7 +57,46 @@ function buildEmailHTML(trips) {
       weekDays.push({ date: wd, str: toDateStr(wd) });
     }
 
-    // Single row per week — each cell contains day number + trip badges
+    // Find trips this week
+    const seenIds = new Set();
+    const weekTrips = [];
+    weekDays.forEach(({ str }) => {
+      trips.forEach(trip => {
+        const start = trip.start_date.split('T')[0];
+        const end = trip.end_date.split('T')[0];
+        if (str >= start && str <= end && !seenIds.has(trip.id)) {
+          seenIds.add(trip.id);
+          weekTrips.push(trip);
+        }
+      });
+    });
+    weekTrips.sort((a, b) => {
+      const cmp = a.start_date.split('T')[0].localeCompare(b.start_date.split('T')[0]);
+      return cmp !== 0 ? cmp : b.end_date.split('T')[0].localeCompare(a.end_date.split('T')[0]);
+    });
+
+    // Stack trips into rows
+    const barRows = [];
+    const positions = [];
+    weekTrips.forEach(trip => {
+      const start = trip.start_date.split('T')[0];
+      const end = trip.end_date.split('T')[0];
+      let s = weekDays.findIndex(d => d.str >= start);
+      if (s === -1) s = 0;
+      let e = 6;
+      for (let i = 6; i >= 0; i--) { if (weekDays[i].str <= end) { e = i; break; } }
+      let row = 0;
+      while (true) {
+        if (!barRows[row]) { barRows[row] = []; break; }
+        if (!barRows[row].some(b => s <= b.e && e >= b.s)) break;
+        row++;
+      }
+      barRows[row] = barRows[row] || [];
+      barRows[row].push({ s, e });
+      positions.push({ trip, s, e, row });
+    });
+
+    // Row 1: Day numbers (tall cells)
     weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
       const { date, str } = weekDays[d];
@@ -68,21 +107,33 @@ function buildEmailHTML(trips) {
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
-      const dayTrips = getTripsForDay(str, trips);
-      let badgesHtml = '';
-      dayTrips.forEach(trip => {
-        const color = getColor(trip.created_by);
-        // Truncate name to fit in cell
-        const name = trip.name.length > 14 ? trip.name.substring(0, 13) + '…' : trip.name;
-        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 4px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px rgba(0,0,0,0.12);">${name}</div>`;
-      });
-
-      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
+      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:${50 + barRows.length * 28}px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
         ${monthLabel}${dayNum}
-        ${badgesHtml}
       </td>`;
     }
     weeksHtml += '</tr>';
+
+    // Row 2+: Spanning trip bars
+    for (let r = 0; r < barRows.length; r++) {
+      const rowTrips = positions.filter(p => p.row === r).sort((a, b) => a.s - b.s);
+      weeksHtml += '<tr style="height:0;line-height:0;font-size:0;">';
+      let col = 0;
+      for (const tp of rowTrips) {
+        if (tp.s > col) {
+          weeksHtml += `<td colspan="${tp.s - col}" style="height:1px;"></td>`;
+        }
+        const span = tp.e - tp.s + 1;
+        const color = getColor(tp.trip.created_by);
+        weeksHtml += `<td colspan="${span}" style="padding:2px 3px;vertical-align:top;">
+          <div style="background:${color};color:#fff;font-size:11px;font-weight:600;padding:4px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,0.12);margin-top:-${22 + (barRows.length - 1 - r) * 26}px;">
+            ${tp.trip.name}
+          </div>
+        </td>`;
+        col = tp.e + 1;
+      }
+      if (col < 7) weeksHtml += `<td colspan="${7 - col}" style="height:1px;"></td>`;
+      weeksHtml += '</tr>';
+    }
   }
 
   return `<!DOCTYPE html>
