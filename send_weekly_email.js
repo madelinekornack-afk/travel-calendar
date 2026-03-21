@@ -142,15 +142,22 @@ function buildEmailHTML(trips) {
         const rLeft = isFirst || isSingleDay ? '4px' : '0';
         const rRight = isLast || isSingleDay ? '4px' : '0';
 
+        // Margins: first day gets left padding, last day gets right padding
+        // Middle days go edge-to-edge (margin -5px to cover cell padding)
+        const mLeft = isFirst || isSingleDay ? '0' : '-5px';
+        const mRight = isLast || isSingleDay ? '0' : '-5px';
+        const pLeft = isFirst || isSingleDay ? '5px' : '3px';
+        const pRight = isLast || isSingleDay ? '5px' : '3px';
+
         if (isFirst && !isSingleDay && cellsRemaining > 1) {
-          // First day of multi-day: use overflow visible and a wide div
-          const widthPct = (cellsRemaining * 100) - 5;
-          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};margin-top:3px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:14px;position:relative;z-index:2;">
+          // First day of multi-day: overflow visible for text, edge-to-edge on right
+          const widthPct = (cellsRemaining * 100) - 2;
+          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};margin-top:3px;margin-right:${mRight};white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:14px;position:relative;z-index:2;">
             ${label}
           </div>`;
         } else if (!isFirst && !isSingleDay) {
-          // Continuation day: colored bar with no text, same height
-          badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};">&nbsp;</div>`;
+          // Continuation day: colored bar edge-to-edge, same height
+          badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;margin-left:${mLeft};margin-right:${mRight};padding:3px ${pRight} 3px ${pLeft};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};">&nbsp;</div>`;
         } else {
           // Single day trip
           badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:14px;">
