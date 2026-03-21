@@ -5,7 +5,9 @@ const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-const RECIPIENTS = ['madelinekornack@gmail.com', 'pondrejack@gmail.com'];
+// Note: Resend free tier only sends to account owner email until a domain is verified
+// Once verified, add 'pondrejack@gmail.com' back
+const RECIPIENTS = ['madelinekornack@gmail.com'];
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
