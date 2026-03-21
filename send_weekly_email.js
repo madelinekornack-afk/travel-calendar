@@ -27,6 +27,14 @@ function getColor(who) {
   return '#9a7bb5'; // both
 }
 
+function getTripsForDay(dateStr, trips) {
+  return trips.filter(trip => {
+    const start = trip.start_date.split('T')[0];
+    const end = trip.end_date.split('T')[0];
+    return dateStr >= start && dateStr <= end;
+  });
+}
+
 function buildEmailHTML(trips) {
   const monday = getMonday();
   const weeksToShow = 5;
@@ -49,53 +57,7 @@ function buildEmailHTML(trips) {
       weekDays.push({ date: wd, str: toDateStr(wd) });
     }
 
-    // Find trips this week
-    const seenIds = new Set();
-    const weekTrips = [];
-    weekDays.forEach(({ str }) => {
-      trips.forEach(trip => {
-        const start = trip.start_date.split('T')[0];
-        const end = trip.end_date.split('T')[0];
-        if (str >= start && str <= end && !seenIds.has(trip.id)) {
-          seenIds.add(trip.id);
-          weekTrips.push(trip);
-        }
-      });
-    });
-
-    weekTrips.sort((a, b) => {
-      const cmp = a.start_date.split('T')[0].localeCompare(b.start_date.split('T')[0]);
-      return cmp !== 0 ? cmp : b.end_date.split('T')[0].localeCompare(a.end_date.split('T')[0]);
-    });
-
-    // Stack trips into rows
-    const barRows = [];
-    const positions = [];
-    weekTrips.forEach(trip => {
-      const start = trip.start_date.split('T')[0];
-      const end = trip.end_date.split('T')[0];
-      let s = weekDays.findIndex(d => d.str >= start);
-      if (s === -1) s = 0;
-      let e = 6;
-      for (let i = 6; i >= 0; i--) { if (weekDays[i].str <= end) { e = i; break; } }
-
-      let row = 0;
-      while (true) {
-        if (!barRows[row]) { barRows[row] = []; break; }
-        if (!barRows[row].some(b => s <= b.e && e >= b.s)) break;
-        row++;
-      }
-      barRows[row] = barRows[row] || [];
-      barRows[row].push({ s, e });
-      positions.push({ trip, s, e, row });
-    });
-
-    const numBarRows = barRows.length;
-
-    // One table per week — day numbers + bar rows all inside
-    weeksHtml += `<table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-bottom:2px;">`;
-
-    // Day number row
+    // Single row per week — each cell contains day number + trip badges
     weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
       const { date, str } = weekDays[d];
@@ -105,44 +67,22 @@ function buildEmailHTML(trips) {
       const bg = isToday ? '#fef3c7' : (thisMonth % 2 === 0 ? '#ffffff' : '#f5f3f0');
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
-      const rowspan = 1 + numBarRows;
 
-      weeksHtml += `<td rowspan="${rowspan}" style="background:${bg};border:${border};border-radius:4px;padding:4px;vertical-align:top;font-size:12px;font-weight:600;color:#333;width:14.28%;">
+      const dayTrips = getTripsForDay(str, trips);
+      let badgesHtml = '';
+      dayTrips.forEach(trip => {
+        const color = getColor(trip.created_by);
+        // Truncate name to fit in cell
+        const name = trip.name.length > 14 ? trip.name.substring(0, 13) + '…' : trip.name;
+        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 4px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px rgba(0,0,0,0.12);">${name}</div>`;
+      });
+
+      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
         ${monthLabel}${dayNum}
+        ${badgesHtml}
       </td>`;
     }
     weeksHtml += '</tr>';
-
-    // Bar rows — use absolute-style trick: overlay cells on top of rowspanned day cells
-    // Since rowspan is tricky in email, use a different approach:
-    // Close the day table and open an overlay table for bars
-    weeksHtml += '</table>';
-
-    if (numBarRows > 0) {
-      weeksHtml += `<table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-top:-4px;margin-bottom:4px;">`;
-
-      for (let r = 0; r < numBarRows; r++) {
-        const rowTrips = positions.filter(p => p.row === r).sort((a, b) => a.s - b.s);
-        weeksHtml += '<tr>';
-        let col = 0;
-        for (const tp of rowTrips) {
-          if (tp.s > col) {
-            weeksHtml += `<td colspan="${tp.s - col}" style="padding:1px 2px;">&nbsp;</td>`;
-          }
-          const span = tp.e - tp.s + 1;
-          const color = getColor(tp.trip.created_by);
-          weeksHtml += `<td colspan="${span}" style="padding:1px 2px;">
-            <div style="background:${color};color:#fff;font-size:11px;font-weight:600;padding:5px 8px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,0.12);">
-              ${tp.trip.name}
-            </div>
-          </td>`;
-          col = tp.e + 1;
-        }
-        if (col < 7) weeksHtml += `<td colspan="${7 - col}" style="padding:1px 2px;">&nbsp;</td>`;
-        weeksHtml += '</tr>';
-      }
-      weeksHtml += '</table>';
-    }
   }
 
   return `<!DOCTYPE html>
@@ -150,7 +90,7 @@ function buildEmailHTML(trips) {
 <body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:20px 0;">
 <tr><td align="center">
-<table width="700" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+<table width="800" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
 
   <tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:16px 24px;color:#fff;">
     <h1 style="margin:0;font-size:20px;">💕 Maddy & Phil In Love Calendar</h1>
@@ -158,15 +98,13 @@ function buildEmailHTML(trips) {
   </td></tr>
 
   <tr><td style="padding:16px;">
-    <!-- Weekday headers -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:2px;margin-bottom:2px;">
+    <!-- Full calendar grid -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:3px;">
       <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
-        `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:6px 0;width:14.28%;">${d}</td>`
+        `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:8px 0;width:14.28%;">${d}</td>`
       ).join('')}</tr>
+      ${weeksHtml}
     </table>
-
-    <!-- Calendar weeks -->
-    ${weeksHtml}
 
     <!-- Legend -->
     <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
