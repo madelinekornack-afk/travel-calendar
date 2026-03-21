@@ -942,26 +942,36 @@
 
     // Mobile infinite scroll — load more weeks at top/bottom
     if (isMobile) {
+      let scrollReady = false;
+      let scrollDebounce = null;
+
+      // Don't activate scroll loading until user has scrolled at least once
+      setTimeout(() => { scrollReady = true; }, 1000);
+
       window.addEventListener('scroll', () => {
+        if (!scrollReady || scrollDebounce) return;
+
         const scrollTop = window.scrollY;
         const scrollHeight = document.documentElement.scrollHeight;
         const clientHeight = window.innerHeight;
 
         // Near bottom — add more future weeks
         if (scrollTop + clientHeight >= scrollHeight - 100) {
+          scrollDebounce = true;
           mobileWeeksAfter += 4;
-          const oldHeight = scrollHeight;
           renderCalendar();
+          setTimeout(() => { scrollDebounce = false; }, 500);
         }
 
-        // Near top — add more past weeks
-        if (scrollTop <= 50) {
+        // Near top — add more past weeks (only if user has scrolled down first)
+        if (scrollTop <= 20 && mobileWeeksAfter > 8) {
+          scrollDebounce = true;
           const oldHeight = document.documentElement.scrollHeight;
           mobileWeeksBefore += 4;
           renderCalendar();
-          // Keep scroll position so it doesn't jump to top
           const newHeight = document.documentElement.scrollHeight;
           window.scrollTo(0, scrollTop + (newHeight - oldHeight));
+          setTimeout(() => { scrollDebounce = false; }, 500);
         }
       });
     }
