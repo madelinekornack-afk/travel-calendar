@@ -74,21 +74,24 @@ function buildEmailHTML(trips) {
         const color = getColor(trip.created_by);
         const tripStart = trip.start_date.split('T')[0];
         const tripEnd = trip.end_date.split('T')[0];
-        const isFirst = str === tripStart || str === weekDays[0].str;
+        const isFirst = str === tripStart || (str === weekDays[0].str && tripStart < weekDays[0].str);
+        const isLast = str === tripEnd || (str === weekDays[6].str && tripEnd > weekDays[6].str);
         const isSingleDay = tripStart === tripEnd;
 
-        let label;
-        if (isSingleDay || isFirst) {
-          label = trip.name;
-        } else {
-          label = '→';
-        }
+        const label = isFirst || isSingleDay ? trip.name : '&nbsp;';
+        // No horizontal padding on connecting edges so color fills to cell edge
+        const pLeft = isFirst || isSingleDay ? '5px' : '0';
+        const pRight = isLast || isSingleDay ? '5px' : '0';
+        const rTL = isFirst || isSingleDay ? '4px' : '0';
+        const rBL = isFirst || isSingleDay ? '4px' : '0';
+        const rTR = isLast || isSingleDay ? '4px' : '0';
+        const rBR = isLast || isSingleDay ? '4px' : '0';
 
-        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>`;
+        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px ${pRight} 3px ${pLeft};border-radius:${rTL} ${rTR} ${rBR} ${rBL};margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>`;
       });
 
-      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
-        ${monthLabel}${dayNum}
+      weeksHtml += `<td style="background:${bg};border:${border};padding:4px 2px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
+        <div style="padding:0 3px;">${monthLabel}${dayNum}</div>
         ${badgesHtml}
       </td>`;
     }
@@ -109,7 +112,7 @@ function buildEmailHTML(trips) {
 
   <tr><td style="padding:16px;">
     <!-- Full calendar grid -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:separate;border-spacing:3px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:collapse;">
       <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
         `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:8px 0;width:14.28%;">${d}</td>`
       ).join('')}</tr>
