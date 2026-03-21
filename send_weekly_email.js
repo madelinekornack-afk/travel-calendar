@@ -79,19 +79,21 @@ function buildEmailHTML(trips) {
         const isSingleDay = tripStart === tripEnd;
 
         const label = isFirst || isSingleDay ? trip.name : '&nbsp;';
-        // No horizontal padding on connecting edges so color fills to cell edge
         const pLeft = isFirst || isSingleDay ? '5px' : '0';
         const pRight = isLast || isSingleDay ? '5px' : '0';
         const rTL = isFirst || isSingleDay ? '4px' : '0';
         const rBL = isFirst || isSingleDay ? '4px' : '0';
         const rTR = isLast || isSingleDay ? '4px' : '0';
         const rBR = isLast || isSingleDay ? '4px' : '0';
+        // Overflow into neighboring cell by 1px to cover the cell border
+        const mLeft = isFirst || isSingleDay ? '0' : '-1px';
+        const mRight = isLast || isSingleDay ? '0' : '-1px';
 
-        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px ${pRight} 3px ${pLeft};border-radius:${rTL} ${rTR} ${rBR} ${rBL};margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>`;
+        badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:3px ${pRight} 3px ${pLeft};border-radius:${rTL} ${rTR} ${rBR} ${rBL};margin-top:3px;margin-left:${mLeft};margin-right:${mRight};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1;">${label}</div>`;
       });
 
-      weeksHtml += `<td style="background:${bg};border:${border};padding:4px 2px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
-        <div style="padding:0 3px;">${monthLabel}${dayNum}</div>
+      weeksHtml += `<td style="background:${bg};border:${border};padding:4px 0;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;overflow:visible;">
+        <div style="padding:0 5px;">${monthLabel}${dayNum}</div>
         ${badgesHtml}
       </td>`;
     }
