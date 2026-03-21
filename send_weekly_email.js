@@ -97,6 +97,9 @@ function buildEmailHTML(trips) {
     });
     const totalSlots = slotRows.length;
 
+    const numBarRows = totalSlots || 0;
+    const barHeight = numBarRows * 24;
+
     // Day cells row
     weeksHtml += '<tr>';
     for (let d = 0; d < 7; d++) {
@@ -108,14 +111,14 @@ function buildEmailHTML(trips) {
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
       const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
-      weeksHtml += `<td style="background:${bg};border:${border};padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
+      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:${40 + barHeight}px;font-size:13px;font-weight:600;color:#333;width:14.28%;">
         ${monthLabel}${dayNum}
       </td>`;
     }
     weeksHtml += '</tr>';
 
-    // Trip bar rows using colspan — bars span multiple cells
-    for (let r = 0; r < totalSlots; r++) {
+    // Trip bar rows using colspan — positioned to overlap into day cells above
+    for (let r = 0; r < numBarRows; r++) {
       const rowTrips = [];
       weekTrips.forEach(trip => {
         if (tripSlot[trip.id] === r) {
@@ -130,22 +133,23 @@ function buildEmailHTML(trips) {
       });
       rowTrips.sort((a, b) => a.s - b.s);
 
-      weeksHtml += '<tr>';
+      const pullUp = barHeight - (r * 24) + 4;
+      weeksHtml += `<tr style="height:0;">`;
       let col = 0;
       for (const tp of rowTrips) {
         if (tp.s > col) {
-          weeksHtml += `<td colspan="${tp.s - col}"></td>`;
+          weeksHtml += `<td colspan="${tp.s - col}" style="padding:0;height:0;line-height:0;font-size:0;"></td>`;
         }
         const span = tp.e - tp.s + 1;
         const color = getColor(tp.trip.created_by);
-        weeksHtml += `<td colspan="${span}" style="padding:1px 2px;">
-          <div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:4px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        weeksHtml += `<td colspan="${span}" style="padding:0 3px;height:0;vertical-align:bottom;">
+          <div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:4px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:-${pullUp}px;height:20px;line-height:14px;">
             ${tp.trip.name}
           </div>
         </td>`;
         col = tp.e + 1;
       }
-      if (col < 7) weeksHtml += `<td colspan="${7 - col}"></td>`;
+      if (col < 7) weeksHtml += `<td colspan="${7 - col}" style="padding:0;height:0;line-height:0;font-size:0;"></td>`;
       weeksHtml += '</tr>';
     }
   }
