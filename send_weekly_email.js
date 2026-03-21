@@ -150,16 +150,16 @@ function buildEmailHTML(trips) {
         const pRight = isLast || isSingleDay ? '5px' : '3px';
 
         if (isFirst && !isSingleDay && cellsRemaining > 1) {
-          // First day of multi-day: overflow visible for text, edge-to-edge on right
-          const widthPct = (cellsRemaining * 100);
+          // First day of multi-day: overflow visible for text
+          // Width stops before last cell so last cell's rounded bar shows
+          const widthPct = (cellsRemaining * 100) - 50;
           badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:${rLeft} 0 0 ${rLeft};margin-top:3px;margin-right:-6px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:20px;position:relative;z-index:2;">
             ${label}
           </div>`;
         } else if (!isFirst && !isSingleDay) {
           // Continuation day: colored bar edge-to-edge, same height
           const rR = isLast ? '4px' : '0';
-          const zIdx = isLast ? 'position:relative;z-index:3;' : '';
-          badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;margin-left:-6px;margin-right:${isLast ? '0' : '-6px'};border-radius:0 ${rR} ${rR} 0;${zIdx}">&nbsp;</div>`;
+          badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;margin-left:-6px;margin-right:${isLast ? '0' : '-6px'};border-radius:0 ${rR} ${rR} 0;">&nbsp;</div>`;
         } else {
           // Single day trip
           badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:20px;">
