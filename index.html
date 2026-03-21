@@ -18,20 +18,22 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      height: 100vh;
       padding: 0;
-      overflow: hidden;
+    }
+
+    /* Desktop: locked to viewport */
+    @media (min-width: 769px) {
+      body { height: 100vh; overflow: hidden; }
+      .container { height: 100vh; overflow: hidden; }
     }
 
     .container {
       width: 100vw;
-      height: 100vh;
       background: white;
       border-radius: 0;
       box-shadow: none;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
 
     .header {
@@ -450,15 +452,15 @@
     /* ===== MOBILE ===== */
     @media (max-width: 768px) {
       html, body {
-        height: auto !important;
-        overflow-y: scroll !important;
+        height: auto;
+        overflow-y: scroll;
         background: white;
         -webkit-overflow-scrolling: touch;
       }
 
       .container {
-        height: auto !important;
-        overflow: visible !important;
+        height: auto;
+        overflow: visible;
         display: block;
       }
 
@@ -500,7 +502,7 @@
       .weekday { font-size: 10px; padding: 4px 0; }
 
       .week-grid {
-        position: static;
+        position: relative;
         gap: 1px;
         margin-bottom: 1px;
         flex: none !important;
@@ -508,7 +510,13 @@
         grid-auto-rows: 80px;
       }
 
-      .multi-day-event { display: none !important; }
+      .multi-day-event {
+        height: 18px !important;
+        font-size: 9px !important;
+        padding: 2px 4px !important;
+        border-radius: 4px;
+        top: 16px !important;
+      }
 
       .day {
         height: 80px;
@@ -745,42 +753,43 @@
           weekDays.push(toLocalDateStr(wd));
         }
 
-        if (!isMobile) {
-          // DESKTOP: spanning bars
-          const barRows = [];
-          weekMultiDay.forEach(trip => {
-            const start = trip.start_date.split('T')[0];
-            const end = trip.end_date.split('T')[0];
-            let startOffset = weekDays.findIndex(d => d >= start);
-            if (startOffset === -1) startOffset = 0;
-            let endOffset = 6;
-            for (let i = 6; i >= 0; i--) {
-              if (weekDays[i] <= end) { endOffset = i; break; }
-            }
-            const daysShown = endOffset - startOffset + 1;
+        // Spanning bars for both desktop and mobile
+        const barRows = [];
+        const mobileRowH = 22;
+        const desktopRowH = 28;
+        weekMultiDay.forEach(trip => {
+          const start = trip.start_date.split('T')[0];
+          const end = trip.end_date.split('T')[0];
+          let startOffset = weekDays.findIndex(d => d >= start);
+          if (startOffset === -1) startOffset = 0;
+          let endOffset = 6;
+          for (let i = 6; i >= 0; i--) {
+            if (weekDays[i] <= end) { endOffset = i; break; }
+          }
+          const daysShown = endOffset - startOffset + 1;
 
-            let row = 0;
-            while (true) {
-              if (!barRows[row]) { barRows[row] = []; break; }
-              const conflict = barRows[row].some(b => startOffset <= b.end && endOffset >= b.start);
-              if (!conflict) break;
-              row++;
-            }
-            barRows[row] = barRows[row] || [];
-            barRows[row].push({ start: startOffset, end: endOffset });
+          let row = 0;
+          while (true) {
+            if (!barRows[row]) { barRows[row] = []; break; }
+            const conflict = barRows[row].some(b => startOffset <= b.end && endOffset >= b.start);
+            if (!conflict) break;
+            row++;
+          }
+          barRows[row] = barRows[row] || [];
+          barRows[row].push({ start: startOffset, end: endOffset });
 
-            const topPx = 18 + row * 28;
-            const cellWidth = (100 / 7);
-            const left = cellWidth * startOffset;
-            const width = cellWidth * daysShown;
+          const rowH = isMobile ? mobileRowH : desktopRowH;
+          const topPx = (isMobile ? 16 : 18) + row * rowH;
+          const cellWidth = (100 / 7);
+          const left = cellWidth * startOffset;
+          const width = cellWidth * daysShown;
 
-            html += `
-              <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 3px); width: calc(${width}% - 6px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
-                ${trip.name}
-              </div>
-            `;
-          });
-        }
+          html += `
+            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 2px); width: calc(${width}% - 4px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
+              ${trip.name}
+            </div>
+          `;
+        });
 
         for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
           const dayDate = new Date(weekStart);
@@ -797,23 +806,9 @@
           const monthLabel = dayNum === 1 ? dayDate.toLocaleDateString('en-US', { month: 'short' }) : '';
           const isMonthStart = dayNum === 1 && dayOffset > 0 ? 'month-border' : '';
 
-          // MOBILE: inline badges for all trips on this day
-          let tripsHtml = '';
-          if (isMobile) {
-            const dayTrips = trips.filter(trip => {
-              const start = trip.start_date.split('T')[0];
-              const end = trip.end_date.split('T')[0];
-              return dateStr >= start && dateStr <= end;
-            });
-            dayTrips.forEach(trip => {
-              tripsHtml += `<div class="trip-badge ${trip.created_by}" onclick="event.stopPropagation(); editTrip('${trip.id}')">${trip.name}</div>`;
-            });
-          }
-
           html += `
             <div class="day ${isToday} ${monthClass} ${isMonthStart}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
               <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span> ' : ''}${dayNum}</div>
-              ${tripsHtml ? '<div class="day-trips">' + tripsHtml + '</div>' : ''}
             </div>
           `;
         }
