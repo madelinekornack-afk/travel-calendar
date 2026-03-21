@@ -123,7 +123,7 @@
       display: none;
     }
 
-    .mobile-only-weekdays {
+    .mobile-weekday-bar {
       display: none;
     }
 
@@ -499,17 +499,24 @@
         display: none;
       }
 
-      /* Show the fixed sticky weekdays */
-      .mobile-only-weekdays {
+      /* Fixed weekday bar on mobile */
+      .mobile-weekday-bar {
         display: grid !important;
-        position: sticky;
+        grid-template-columns: repeat(7, 1fr);
+        position: fixed;
         top: 36px;
+        left: 0;
+        right: 0;
         z-index: 99;
         background: white;
         gap: 1px;
-        margin-bottom: 1px;
         border-bottom: 1px solid #e0e0e0;
         padding: 4px 0;
+      }
+
+      /* Push calendar content below fixed header + weekdays */
+      .calendar-wrapper {
+        padding-top: 28px !important;
       }
 
       .weekday {
@@ -581,6 +588,15 @@
   </style>
 </head>
 <body>
+  <div class="mobile-weekday-bar">
+    <div class="weekday">Mon</div>
+    <div class="weekday">Tue</div>
+    <div class="weekday">Wed</div>
+    <div class="weekday">Thu</div>
+    <div class="weekday">Fri</div>
+    <div class="weekday">Sat</div>
+    <div class="weekday">Sun</div>
+  </div>
   <div class="container">
     <div class="header">
       <h1>💕 Maddy & Phil In Love Calendar</h1>
@@ -593,15 +609,6 @@
 
     <div class="calendar-wrapper">
       <div id="message"></div>
-      <div id="mobileWeekdays" class="weekdays mobile-only-weekdays">
-        <div class="weekday">Mon</div>
-        <div class="weekday">Tue</div>
-        <div class="weekday">Wed</div>
-        <div class="weekday">Thu</div>
-        <div class="weekday">Fri</div>
-        <div class="weekday">Sat</div>
-        <div class="weekday">Sun</div>
-      </div>
       <div id="calendar" class="month-view">
         <div class="loading">Loading calendar...</div>
       </div>
