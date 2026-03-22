@@ -106,7 +106,9 @@ function buildEmailHTML(trips) {
       const thisMonth = date.getMonth();
       const bg = isToday ? '#fef3c7' : (thisMonth % 2 === 0 ? '#ffffff' : '#f5f3f0');
       const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
-      const monthLabel = dayNum === 1 ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
+      const isFirstDay = week === 0 && d === 0;
+      const showMonth = dayNum === 1 || isFirstDay;
+      const monthLabel = showMonth ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
       const dayTrips = getTripsForDay(str, trips);
 
@@ -182,9 +184,9 @@ function buildEmailHTML(trips) {
 <tr><td align="center">
 <table width="800" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
 
-  <tr><td style="background:linear-gradient(135deg,#667eea,#764ba2);padding:16px 24px;color:#fff;">
-    <h1 style="margin:0;font-size:20px;">💕 Maddy & Phil In Love Calendar</h1>
-    <p style="margin:4px 0 0;font-size:13px;opacity:0.9;">Weekly update — ${dateRange}</p>
+  <tr><td style="background-color:#667eea;background-image:linear-gradient(135deg,#667eea,#764ba2);padding:16px 24px;color:#ffffff;">
+    <h1 style="margin:0;font-size:20px;color:#ffffff;">💕 Maddy & Phil In Love Calendar</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:#ffffffdd;">Weekly update — ${dateRange}</p>
   </td></tr>
 
   <tr><td style="padding:16px;">
