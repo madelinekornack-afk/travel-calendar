@@ -5,8 +5,7 @@ const nodemailer = require('nodemailer');
 const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
 
-// Testing: just Madeline. Add 'pondrejack@gmail.com' when ready
-const RECIPIENTS = ['madelinekornack@gmail.com'];
+const RECIPIENTS = ['madelinekornack@gmail.com', 'pondrejack@gmail.com'];
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
