@@ -659,6 +659,41 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Reading trips is public. Changing them is not: the RLS policies on `trips`
+    // require an `x-trip-key` header matching the edit passphrase, so the anon key
+    // on its own (which anyone can read off this page) can no longer add, edit or
+    // delete anything. The passphrase is kept in this browser only.
+    const TRIP_KEY_STORAGE = 'tripEditKey';
+    let writeClient = null;
+    let writeClientKey = null;
+
+    function getWriteClient({ prompt = true } = {}) {
+      let key = localStorage.getItem(TRIP_KEY_STORAGE);
+      if (!key && prompt) {
+        key = (window.prompt('Enter the edit passphrase to change trips:') || '').trim();
+        if (!key) return null;
+        localStorage.setItem(TRIP_KEY_STORAGE, key);
+      }
+      if (!key) return null;
+      if (!writeClient || writeClientKey !== key) {
+        writeClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { 'x-trip-key': key } },
+        });
+        writeClientKey = key;
+      }
+      return writeClient;
+    }
+
+    // A wrong passphrase makes UPDATE and DELETE return 200 with zero rows rather
+    // than an error, so every write asks for the affected rows back and treats an
+    // empty result as a rejected passphrase instead of silently "succeeding".
+    function rejectBadKey() {
+      localStorage.removeItem(TRIP_KEY_STORAGE);
+      writeClient = null;
+      writeClientKey = null;
+      throw new Error('That edit passphrase was not accepted. Try again.');
+    }
+
     let currentDate = new Date();
     let trips = [];
     let selectedTrip = null;
@@ -896,18 +931,28 @@
       }
 
       try {
+        const db = getWriteClient();
+        if (!db) {
+          document.getElementById('formError').innerHTML = '<div class="error">An edit passphrase is required to change trips.</div>';
+          return;
+        }
+
         if (selectedTrip) {
-          const { error } = await supabase
+          const { data, error } = await db
             .from('trips')
             .update({ name, start_date: startDate, end_date: endDate, created_by: createdBy })
-            .eq('id', selectedTrip.id);
+            .eq('id', selectedTrip.id)
+            .select();
           if (error) throw error;
+          if (!data || data.length === 0) rejectBadKey();
           showMessage('Trip updated!', 'success');
         } else {
-          const { error } = await supabase
+          const { data, error } = await db
             .from('trips')
-            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy });
+            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy })
+            .select();
           if (error) throw error;
+          if (!data || data.length === 0) rejectBadKey();
           showMessage('Trip added!', 'success');
         }
 
@@ -924,12 +969,20 @@
       if (!selectedTrip || !confirm('Delete this trip?')) return;
 
       try {
-        const { error } = await supabase
+        const db = getWriteClient();
+        if (!db) {
+          document.getElementById('formError').innerHTML = '<div class="error">An edit passphrase is required to delete trips.</div>';
+          return;
+        }
+
+        const { data, error } = await db
           .from('trips')
           .delete()
-          .eq('id', selectedTrip.id);
+          .eq('id', selectedTrip.id)
+          .select();
 
         if (error) throw error;
+        if (!data || data.length === 0) rejectBadKey();
 
         showMessage('Trip deleted!', 'success');
         await fetchTrips();
