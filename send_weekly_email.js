@@ -21,9 +21,9 @@ function getMonday() {
 }
 
 function getColor(who) {
-  if (who === 'madeline') return '#e8815c';
-  if (who === 'fiance') return '#4a90a4';
-  return '#9a7bb5'; // both
+  if (who === 'madeline') return '#C8664A';
+  if (who === 'fiance') return '#3F7F8C';
+  return '#7A5C99'; // both
 }
 
 function getTripsForDay(dateStr, trips) {
@@ -103,11 +103,12 @@ function buildEmailHTML(trips) {
       const dayNum = date.getDate();
       const isToday = str === todayStr;
       const thisMonth = date.getMonth();
-      const bg = isToday ? '#fef3c7' : (thisMonth % 2 === 0 ? '#ffffff' : '#f5f3f0');
-      const border = isToday ? '2px solid #f59e0b' : '1px solid #e0e0e0';
+      // Same rule as the page: this month on the paper, other months a shade darker.
+      const bg = thisMonth === new Date().getMonth() ? '#FBF8F3' : '#F3EEE5';
+      const border = isToday ? '2px solid #C8664A' : '1px solid #E6DFD3';
       const isFirstDay = week === 0 && d === 0;
       const showMonth = dayNum === 1 || isFirstDay;
-      const monthLabel = showMonth ? `<span style="font-size:9px;font-weight:700;color:#667eea;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
+      const monthLabel = showMonth ? `<span style="font-size:9px;font-weight:700;color:#C8664A;">${date.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}</span> ` : '';
 
       const dayTrips = getTripsForDay(str, trips);
 
@@ -153,7 +154,7 @@ function buildEmailHTML(trips) {
         if (isFirst && !isSingleDay && cellsRemaining > 1) {
           // First day of multi-day: overflow visible for text, edge-to-edge on right
           const widthPct = (cellsRemaining * 100);
-          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:${rLeft} 0 0 ${rLeft};margin-top:3px;margin-right:-8px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:20px;position:relative;z-index:2;">
+          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:500;padding:0 5px;border-radius:${rLeft} 0 0 ${rLeft};margin-top:3px;margin-right:-8px;white-space:nowrap;overflow:visible;width:${widthPct}%;height:20px;line-height:20px;position:relative;z-index:2;">
             ${label}
           </div>`;
         } else if (!isFirst && !isSingleDay) {
@@ -162,13 +163,13 @@ function buildEmailHTML(trips) {
           badgesHtml += `<div style="background:${color};height:20px;margin-top:3px;margin-left:-8px;margin-right:${isLast ? '0' : '-8px'};border-radius:0 ${rR} ${rR} 0;">&nbsp;</div>`;
         } else {
           // Single day trip
-          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:600;padding:0 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:20px;">
+          badgesHtml += `<div style="background:${color};color:#fff;font-size:10px;font-weight:500;padding:0 5px;border-radius:4px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:20px;line-height:20px;">
             ${label}
           </div>`;
         }
       });
 
-      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#333;width:14.28%;overflow:visible;">
+      weeksHtml += `<td style="background:${bg};border:${border};border-radius:4px;padding:5px;vertical-align:top;height:80px;font-size:13px;font-weight:600;color:#2E2A26;width:14.28%;overflow:visible;">
         ${monthLabel}${dayNum}
         ${badgesHtml}
       </td>`;
@@ -178,21 +179,21 @@ function buildEmailHTML(trips) {
 
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:20px 0;">
+<body style="margin:0;padding:0;background:#F3EEE5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F3EEE5;padding:20px 0;">
 <tr><td align="center">
-<table width="800" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+<table width="800" cellpadding="0" cellspacing="0" style="background:#FBF8F3;border-radius:12px;overflow:hidden;border:1px solid #E6DFD3;">
 
-  <tr><td style="background-color:#667eea;background-image:linear-gradient(135deg,#667eea,#764ba2);padding:16px 24px;color:#ffffff;">
-    <h1 style="margin:0;font-size:20px;color:#ffffff;">💕 Maddy & Phil In Love Calendar</h1>
-    <p style="margin:4px 0 0;font-size:13px;color:#ffffffdd;">Weekly update — ${dateRange}</p>
+  <tr><td style="background-color:#FBF8F3;padding:16px 24px;color:#2E2A26;border-bottom:1px solid #E6DFD3;">
+    <h1 style="margin:0;font-size:22px;font-weight:500;font-family:Georgia,'Times New Roman',serif;color:#2E2A26;">Maddy &amp; Phil In Love Calendar</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:#8C8273;">Weekly update — ${dateRange}</p>
   </td></tr>
 
   <tr><td style="padding:16px;">
     <!-- Full calendar grid -->
     <table width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;border-collapse:collapse;">
       <tr>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
-        `<td style="text-align:center;font-weight:700;color:#666;font-size:12px;padding:8px 0;width:14.28%;">${d}</td>`
+        `<td style="text-align:center;font-weight:600;color:#A39886;font-size:11px;letter-spacing:0.8px;text-transform:uppercase;padding:8px 0;width:14.28%;">${d}</td>`
       ).join('')}</tr>
       ${weeksHtml}
     </table>
@@ -200,15 +201,15 @@ function buildEmailHTML(trips) {
     <!-- Legend -->
     <table cellpadding="0" cellspacing="0" style="margin-top:16px;">
       <tr>
-        <td style="padding-right:16px;"><span style="display:inline-block;width:12px;height:12px;background:#e8815c;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#555;vertical-align:middle;">Madeline</span></td>
-        <td style="padding-right:16px;"><span style="display:inline-block;width:12px;height:12px;background:#4a90a4;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#555;vertical-align:middle;">Phil</span></td>
-        <td><span style="display:inline-block;width:12px;height:12px;background:#9a7bb5;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#555;vertical-align:middle;">Both</span></td>
+        <td style="padding-right:16px;"><span style="display:inline-block;width:12px;height:12px;background:#C8664A;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#6F665B;vertical-align:middle;">Madeline</span></td>
+        <td style="padding-right:16px;"><span style="display:inline-block;width:12px;height:12px;background:#3F7F8C;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#6F665B;vertical-align:middle;">Phil</span></td>
+        <td><span style="display:inline-block;width:12px;height:12px;background:#7A5C99;border-radius:3px;vertical-align:middle;margin-right:4px;"></span><span style="font-size:12px;color:#6F665B;vertical-align:middle;">Both</span></td>
       </tr>
     </table>
   </td></tr>
 
-  <tr><td style="padding:12px 24px;text-align:center;color:#999;font-size:11px;border-top:1px solid #eee;">
-    <a href="https://madelinekornack-afk.github.io/travel-calendar/" style="color:#667eea;text-decoration:none;">View full calendar →</a>
+  <tr><td style="padding:12px 24px;text-align:center;color:#999;font-size:11px;border-top:1px solid #E6DFD3;">
+    <a href="https://madelinekornack-afk.github.io/travel-calendar/" style="color:#C8664A;text-decoration:none;">View full calendar →</a>
   </td></tr>
 
 </table>

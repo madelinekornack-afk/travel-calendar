@@ -7,18 +7,31 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Maddy & Phil In Love Calendar</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/+esm"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    /* Paper planner: cream paper, hairline rules, flat ink colours. */
+    :root {
+      --paper: #FBF8F3;
+      --paper-dim: #F3EEE5;
+      --line: #E6DFD3;
+      --ink: #2E2A26;
+      --ink-soft: #6F665B;
+      --muted: #A39886;
+      --madeline: #C8664A;
+      --phil: #3F7F8C;
+      --both: #7A5C99;
+      --serif: 'Fraunces', Georgia, serif;
     }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 0;
+      background: var(--paper);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
     }
 
     /* Desktop: locked to viewport */
@@ -29,54 +42,61 @@
 
     .container {
       width: 100vw;
-      background: white;
-      border-radius: 0;
-      box-shadow: none;
       display: flex;
       flex-direction: column;
     }
 
     .header {
-      padding: 8px 15px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+      padding: 18px 28px 10px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+      align-items: baseline;
       flex-shrink: 0;
     }
 
     .header h1 {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0;
+      font-family: var(--serif);
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: -0.4px;
     }
 
-    .nav-buttons {
+    .header h1 .year { color: var(--muted); font-weight: 400; }
+
+    .header-right {
       display: flex;
-      gap: 6px;
+      align-items: center;
+      gap: 16px;
     }
+
+    .couple {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .nav-buttons { display: flex; gap: 6px; }
 
     .nav-buttons button {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 4px;
+      background: transparent;
+      color: var(--ink-soft);
+      border: 1px solid var(--line);
+      height: 30px;
+      min-width: 30px;
+      padding: 0 10px;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 11px;
-      transition: background 0.2s;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
     }
 
-    .nav-buttons button:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
+    .nav-buttons button:hover { background: var(--paper-dim); color: var(--ink); }
 
     .calendar-wrapper {
       flex: 1;
       overflow: hidden;
-      padding: 6px 8px;
+      padding: 0 28px 4px;
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -89,390 +109,221 @@
       flex-direction: column;
     }
 
-    .month-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-      flex-shrink: 0;
-    }
-
-    .month-header h2 {
-      font-size: 18px;
-      color: #333;
-      margin: 0;
-    }
-
     .weekdays {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
-      margin-bottom: 3px;
       flex-shrink: 0;
     }
 
     .weekday {
-      text-align: center;
-      font-weight: 600;
-      color: #666;
-      padding: 3px 0;
-      font-size: 12px;
+      text-align: left;
+      padding: 0 8px 6px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
     }
 
-    .week-events {
-      display: none;
-    }
-
-    .mobile-weekday-bar {
-      display: none;
-    }
+    .mobile-weekday-bar { display: none; }
 
     .week-grid {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
-      gap: 3px;
       flex: 1;
       min-height: 0;
-      margin-bottom: 8px;
       position: relative;
+      border-top: 1px solid var(--line);
     }
 
+    .week-grid:last-child { border-bottom: 1px solid var(--line); }
+
     .multi-day-event {
-      padding: 4px 8px !important;
-      font-size: 11px !important;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-      border-radius: 6px;
-      border: none !important;
+      position: absolute;
+      height: 22px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       display: flex;
       align-items: center;
       cursor: pointer;
-      position: absolute;
-      top: 18px;
-      height: 24px;
       z-index: 10;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
-      text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      color: #fff;
+      transition: filter 0.15s;
     }
 
-    .multi-day-event:hover {
-      filter: brightness(1.05);
-      box-shadow: 0 3px 6px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.12);
-      transform: translateY(-1px);
-      transition: all 0.15s ease;
-    }
+    .multi-day-event:hover { filter: brightness(0.92); }
+
+    .trip-badge.madeline { background: var(--madeline); }
+    .trip-badge.fiance { background: var(--phil); }
+    .trip-badge.both { background: var(--both); }
 
     .day {
-      background: #f9f9f9;
-      border: 1px solid #e0e0e0;
-      border-radius: 4px;
-      padding: 3px;
-      padding-top: 3px;
+      padding: 6px 8px;
       cursor: pointer;
-      transition: all 0.2s;
-      overflow: visible;
       position: relative;
-      font-size: 9px;
       display: flex;
       flex-direction: column;
       min-height: 50px;
+      transition: background 0.15s;
     }
 
-    .day.today {
-      background: #fef3c7;
-      border: 1.5px solid #f59e0b;
-      box-shadow: inset 0 0 8px rgba(245, 158, 11, 0.2);
+    .day ~ .day { border-left: 1px solid var(--line); }
+
+    /* The month in the heading sits on the paper; the months either side are a shade darker. */
+    .day.in-month { background: var(--paper); }
+    .day.other-month { background: var(--paper-dim); }
+    .day.other-month .day-number { color: var(--muted); }
+    .day:hover { background: #F6EFE4; }
+
+    .day-number {
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 22px;
+      height: 22px;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
 
-    .day:hover {
-      border-color: #667eea;
-      background: #f0f3ff;
-    }
-
-    .day.month-even {
-      background: #ffffff;
-    }
-
-    .day.month-odd {
-      background: #f5f3f0;
-    }
-
-    .day.today:hover {
-      background: #fef3c7;
-      border-color: #f59e0b;
-    }
-
-    .day.month-border {
-      border-left: 3px solid #667eea;
+    .day.today .day-number .num {
+      background: var(--madeline);
+      color: #fff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: -4px;
     }
 
     .month-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: #667eea;
-      text-transform: uppercase;
-    }
-
-    .day.selected {
-      background: #667eea;
-      color: white;
-      border-color: #667eea;
-    }
-
-    .day-number {
-      font-weight: 600;
-      font-size: 11px;
-      margin-bottom: 2px;
-      color: #333;
-      line-height: 1;
-    }
-
-    .day.today .day-number {
-      color: #92400e;
-    }
-
-    .day.selected .day-number {
-      color: white;
-    }
-
-    .day-trips {
-      font-size: 9px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      overflow: hidden;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .trip-badge {
-      padding: 4px 8px;
-      border-radius: 6px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-      line-height: 1.3;
-      width: 100%;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
-      text-shadow: 0 1px 1px rgba(0,0,0,0.1);
-    }
-
-    .trip-badge:hover {
-      filter: brightness(1.05);
-      box-shadow: 0 3px 6px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.12);
-      transform: translateY(-1px);
-      transition: all 0.15s ease;
-    }
-
-    .trip-badge.madeline {
-      background: linear-gradient(135deg, #e8815c, #e09070);
-      color: #fff;
-    }
-
-    .trip-badge.fiance {
-      background: linear-gradient(135deg, #4a90a4, #5a9aad);
-      color: #fff;
-    }
-
-    .trip-badge.both {
-      background: linear-gradient(135deg, #9a7bb5, #a485bf);
-      color: #fff;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--madeline);
     }
 
     .modal {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      inset: 0;
+      background: rgba(46, 42, 38, 0.35);
       z-index: 1000;
       justify-content: center;
       align-items: center;
     }
 
-    .modal.active {
-      display: flex;
-    }
+    .modal.active { display: flex; }
 
     .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      background: var(--paper);
+      padding: 24px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 40px rgba(46, 42, 38, 0.18);
       width: 90%;
-      max-width: 450px;
+      max-width: 420px;
     }
 
     .modal-content h3 {
-      margin-bottom: 15px;
-      color: #333;
-      font-size: 16px;
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 16px;
     }
 
-    .form-group {
-      margin-bottom: 12px;
-    }
+    .form-group { margin-bottom: 12px; }
 
     .form-group label {
       display: block;
       margin-bottom: 4px;
+      font-size: 12px;
       font-weight: 500;
-      color: #333;
-      font-size: 13px;
+      color: var(--ink-soft);
     }
 
     .form-group input,
     .form-group select {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
       border-radius: 6px;
-      font-size: 13px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--ink);
     }
 
     .form-group input:focus,
     .form-group select:focus {
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      border-color: var(--ink-soft);
     }
 
-    .form-buttons {
-      display: flex;
-      gap: 8px;
-      margin-top: 15px;
-    }
+    .form-buttons { display: flex; gap: 8px; margin-top: 18px; }
 
     .form-buttons button {
       flex: 1;
-      padding: 8px;
-      border: none;
+      padding: 9px;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
 
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
+    .btn-primary { background: var(--ink); color: var(--paper); border: 1px solid var(--ink); }
+    .btn-primary:hover { background: #47413B; }
+    .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+    .btn-secondary:hover { background: var(--paper-dim); }
+    .btn-danger { background: transparent; color: #A33A2A; border: 1px solid #E5C2BA; }
+    .btn-danger:hover { background: #F7E7E2; }
 
-    .btn-primary:hover {
-      background: #5568d3;
-    }
+    .loading { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
 
-    .btn-secondary {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    .btn-secondary:hover {
-      background: #d0d0d0;
-    }
-
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #667eea;
+    .error, .success {
+      padding: 9px 12px;
+      border-radius: 6px;
+      margin-bottom: 10px;
       font-size: 13px;
     }
-
-    .error {
-      background: #fee;
-      border: 1px solid #fcc;
-      color: #c33;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-      font-size: 12px;
-    }
-
-    .success {
-      background: #efe;
-      border: 1px solid #cfc;
-      color: #3c3;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 12px;
-      font-size: 12px;
-    }
+    .error { background: #F7E7E2; color: #8A2E20; }
+    .success { background: #E6EFE9; color: #2F5E46; }
 
     .legend {
       display: flex;
-      gap: 16px;
-      padding: 10px 30px;
-      border-top: 1px solid #e0e0e0;
+      gap: 18px;
+      padding: 10px 28px 14px;
       align-items: center;
-      font-size: 13px;
-      color: #555;
+      font-size: 12px;
+      color: var(--ink-soft);
       flex-shrink: 0;
     }
 
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .legend-swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
-    }
-
-    .legend-swatch.madeline {
-      background: linear-gradient(135deg, #e8815c, #e09070);
-    }
-
-    .legend-swatch.fiance {
-      background: linear-gradient(135deg, #4a90a4, #5a9aad);
-    }
-
-    .legend-swatch.both {
-      background: linear-gradient(135deg, #9a7bb5, #a485bf);
-    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+    .legend-swatch.madeline { background: var(--madeline); }
+    .legend-swatch.fiance { background: var(--phil); }
+    .legend-swatch.both { background: var(--both); }
 
     /* ===== MOBILE ===== */
     @media (max-width: 768px) {
       html, body {
         height: auto;
         overflow-y: scroll;
-        background: white;
         -webkit-overflow-scrolling: touch;
       }
 
-      .container {
-        height: auto;
-        overflow: visible;
-        display: block;
-      }
-
-      .header {
-        display: none;
-      }
-
-      .nav-buttons { display: none; }
+      .container { height: auto; overflow: visible; display: block; }
+      .header { display: none; }
 
       /* Fixed weekday bar on mobile */
       .mobile-weekday-bar {
@@ -483,43 +334,25 @@
         left: 0;
         right: 0;
         z-index: 99;
-        background: white;
-        border-bottom: 1px solid #ddd;
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
         padding: 6px 0;
       }
+
+      .mobile-weekday-bar .weekday { text-align: center; padding: 2px 0; font-size: 10px; }
 
       .calendar-wrapper {
         overflow: visible !important;
         flex: none !important;
-        padding: 2px;
-        padding-top: 30px !important;
+        padding: 30px 0 0 !important;
         display: block;
         height: auto !important;
       }
 
-      .month-view {
-        height: auto !important;
-        display: block;
-      }
-
-      .month-header { display: none; }
-
-      /* Hide JS-rendered weekdays on mobile */
-      .month-view .weekdays {
-        display: none;
-      }
-
-      .weekday {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 4px 0;
-        color: #555;
-      }
+      .month-view { height: auto !important; display: block; }
+      .month-view .weekdays { display: none; }
 
       .week-grid {
-        position: relative;
-        gap: 1px;
-        margin-bottom: 1px;
         flex: none !important;
         min-height: auto !important;
         grid-auto-rows: 80px;
@@ -527,53 +360,18 @@
 
       .multi-day-event {
         height: 18px !important;
-        font-size: 9px !important;
-        padding: 2px 4px !important;
-        border-radius: 4px;
+        font-size: 10px !important;
+        padding: 0 5px !important;
+        border-radius: 3px;
       }
 
-      .day {
-        height: 80px;
-        min-height: 80px;
-        max-height: 80px;
-        padding: 2px 3px;
-        overflow: hidden;
-      }
+      .day { height: 80px; min-height: 80px; padding: 3px 4px; overflow: hidden; }
+      .day-number { font-size: 12px; height: 18px; line-height: 18px; }
+      .day.today .day-number .num { width: 18px; height: 18px; margin-left: -2px; }
+      .month-label { font-size: 11px; }
 
-      .day-number {
-        font-size: 12px;
-        font-weight: 700;
-        position: static;
-        margin-bottom: 2px;
-      }
-
-      .day-trips {
-        overflow: hidden;
-        flex: none;
-        gap: 2px;
-      }
-
-      .trip-badge {
-        font-size: 9px;
-        padding: 3px 4px;
-        border-radius: 4px;
-        white-space: nowrap;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-        line-height: 1.1;
-      }
-
-      .month-label { font-size: 9px; }
-
-      .legend {
-        padding: 8px 12px;
-        gap: 10px;
-        font-size: 11px;
-      }
-
-      .modal-content {
-        width: 95%;
-        padding: 16px;
-      }
+      .legend { padding: 10px 12px 14px; gap: 12px; font-size: 11px; }
+      .modal-content { width: 95%; padding: 18px; }
     }
   </style>
 </head>
@@ -589,11 +387,14 @@
   </div>
   <div class="container">
     <div class="header">
-      <h1>💕 Maddy & Phil In Love Calendar</h1>
-      <div class="nav-buttons">
-        <button onclick="previousMonth()">←</button>
-        <button onclick="currentMonth()">Today</button>
-        <button onclick="nextMonth()">→</button>
+      <h1 id="monthTitle"></h1>
+      <div class="header-right">
+        <span class="couple">Maddy &amp; Phil</span>
+        <div class="nav-buttons">
+          <button onclick="previousMonth()" aria-label="Previous week">←</button>
+          <button onclick="currentMonth()">Today</button>
+          <button onclick="nextMonth()" aria-label="Next week">→</button>
+        </div>
       </div>
     </div>
 
@@ -635,7 +436,7 @@
           <select id="tripPerson" required>
             <option value="">Select...</option>
             <option value="madeline">Madeline</option>
-            <option value="fiance">Fiancé (Phil)</option>
+            <option value="fiance">Phil</option>
             <option value="both">Both of us</option>
           </select>
         </div>
@@ -698,7 +499,11 @@
     let trips = [];
     let selectedTrip = null;
 
-    const isMobile = window.innerWidth <= 768;
+    const mobileQuery = window.matchMedia('(max-width: 768px)');
+    const isMobile = mobileQuery.matches;
+    // The phone and desktop layouts set up different scroll handlers at load,
+    // so reload when a resize or rotation crosses the breakpoint.
+    mobileQuery.addEventListener('change', () => location.reload());
 
     window.previousMonth = () => {
       currentDate.setDate(currentDate.getDate() - 7);
@@ -730,6 +535,13 @@
       }
     }
 
+    // Trip names are typed by people, so escape them before they go into innerHTML.
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
     function toLocalDateStr(d) {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -748,6 +560,14 @@
 
       const startDate = new Date(date.setDate(diff));
 
+      // The heading names the month of the top week's Thursday, so the
+      // label turns over once most of the top row is in the new month.
+      const focusDay = new Date(startDate);
+      focusDay.setDate(focusDay.getDate() + 3);
+      const focusMonth = focusDay.getMonth();
+      document.getElementById('monthTitle').innerHTML =
+        `${focusDay.toLocaleDateString('en-US', { month: 'long' })} <span class="year">${focusDay.getFullYear()}</span>`;
+
       let weeksToShow, weeksBefore;
       if (isMobile) {
         weeksToShow = mobileWeeksBefore + mobileWeeksAfter;
@@ -758,13 +578,8 @@
         weeksBefore = 0;
       }
 
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + weeksToShow * 7 - 1);
 
       let html = `
-        <div class="month-header">
-          <h2>${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</h2>
-        </div>
 
         <div class="weekdays">
           <div class="weekday">Mon</div>
@@ -837,14 +652,14 @@
           barRows[row].push({ start: startOffset, end: endOffset });
 
           const rowH = isMobile ? mobileRowH : desktopRowH;
-          const topPx = (isMobile ? 16 : 18) + row * rowH;
+          const topPx = (isMobile ? 22 : 32) + row * rowH;
           const cellWidth = (100 / 7);
           const left = cellWidth * startOffset;
           const width = cellWidth * daysShown;
 
           html += `
-            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 2px); width: calc(${width}% - 4px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
-              ${trip.name}
+            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 4px); width: calc(${width}% - 8px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
+              ${escapeHtml(trip.name)}
             </div>
           `;
         });
@@ -859,14 +674,13 @@
           const todayStr = toLocalDateStr(today);
           const isToday = dateStr === todayStr ? 'today' : '';
           const thisMonth = dayDate.getMonth();
-          const monthClass = thisMonth % 2 === 0 ? 'month-even' : 'month-odd';
+          const monthClass = thisMonth === focusMonth ? 'in-month' : 'other-month';
 
           const monthLabel = dayNum === 1 ? dayDate.toLocaleDateString('en-US', { month: 'short' }) : '';
-          const isMonthStart = dayNum === 1 && dayOffset > 0 ? 'month-border' : '';
 
           html += `
-            <div class="day ${isToday} ${monthClass} ${isMonthStart}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
-              <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span> ' : ''}${dayNum}</div>
+            <div class="day ${isToday} ${monthClass}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
+              <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span>' : ''}<span class="num">${dayNum}</span></div>
             </div>
           `;
         }
@@ -1002,6 +816,15 @@
 
     window.addEventListener('click', (e) => {
       if (e.target.id === 'tripModal') closeModal();
+    });
+
+    // Esc closes the trip editor; the arrow keys move a week while it is closed.
+    window.addEventListener('keydown', (e) => {
+      const modalOpen = document.getElementById('tripModal').classList.contains('active');
+      if (e.key === 'Escape' && modalOpen) closeModal();
+      if (modalOpen || isMobile) return;
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') previousMonth();
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') nextMonth();
     });
 
     await fetchTrips();
