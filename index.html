@@ -76,6 +76,35 @@
       color: var(--muted);
     }
 
+    /* Two calendars, one page: a segmented toggle in the header. */
+    .tabs {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 2px;
+      background: var(--paper-dim);
+    }
+
+    .tabs button {
+      border: none;
+      background: transparent;
+      color: var(--ink-soft);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tabs button:hover { color: var(--ink); }
+
+    .tabs button.active {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
     .nav-buttons { display: flex; gap: 6px; }
 
     .nav-buttons button {
@@ -323,14 +352,25 @@
       }
 
       .container { height: auto; overflow: visible; display: block; }
-      .header { display: none; }
+      .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 8px 12px;
+        background: var(--paper);
+        justify-content: center;
+      }
+
+      .header h1, .header-right { display: none; }
 
       /* Fixed weekday bar on mobile */
       .mobile-weekday-bar {
         display: grid !important;
         grid-template-columns: repeat(7, 1fr);
         position: fixed;
-        top: 0;
+        top: 48px;
         left: 0;
         right: 0;
         z-index: 99;
@@ -344,7 +384,7 @@
       .calendar-wrapper {
         overflow: visible !important;
         flex: none !important;
-        padding: 30px 0 0 !important;
+        padding: 78px 0 0 !important;
         display: block;
         height: auto !important;
       }
@@ -388,6 +428,10 @@
   <div class="container">
     <div class="header">
       <h1 id="monthTitle"></h1>
+      <div class="tabs" role="tablist">
+        <button role="tab" data-calendar="personal" onclick="switchCalendar('personal')">Personal</button>
+        <button role="tab" data-calendar="maxinomics" onclick="switchCalendar('maxinomics')">Maxinomics</button>
+      </div>
       <div class="header-right">
         <span class="couple">Maddy &amp; Phil</span>
         <div class="nav-buttons">
@@ -438,6 +482,14 @@
             <option value="madeline">Madeline</option>
             <option value="fiance">Phil</option>
             <option value="both">Both of us</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="tripCalendar">Calendar</label>
+          <select id="tripCalendar">
+            <option value="personal">Personal</option>
+            <option value="maxinomics">Maxinomics</option>
           </select>
         </div>
 
@@ -495,6 +547,38 @@
       throw new Error('That edit passphrase was not accepted. Try again.');
     }
 
+    // Which calendar is showing. A #maxinomics or #personal link opens that
+    // tab; otherwise the page reopens on the tab used last.
+    const CALENDARS = ['personal', 'maxinomics'];
+    const TAB_STORAGE = 'calendarTab';
+    let activeCalendar = (() => {
+      const fromHash = location.hash.slice(1);
+      if (CALENDARS.includes(fromHash)) return fromHash;
+      try {
+        const saved = localStorage.getItem(TAB_STORAGE);
+        if (CALENDARS.includes(saved)) return saved;
+      } catch {}
+      return 'personal';
+    })();
+
+    function markActiveTab() {
+      document.querySelectorAll('.tabs button').forEach(b => {
+        const on = b.dataset.calendar === activeCalendar;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on);
+      });
+    }
+
+    window.switchCalendar = async (calendar) => {
+      if (calendar === activeCalendar) return;
+      activeCalendar = calendar;
+      try { localStorage.setItem(TAB_STORAGE, calendar); } catch {}
+      history.replaceState(null, '', '#' + calendar);
+      markActiveTab();
+      await fetchTrips();
+      renderCalendar();
+    };
+
     let currentDate = new Date();
     let trips = [];
     let selectedTrip = null;
@@ -525,6 +609,7 @@
         const { data, error } = await supabase
           .from('trips')
           .select('*')
+          .eq('calendar', activeCalendar)
           .order('start_date', { ascending: true });
 
         if (error) throw error;
@@ -700,6 +785,7 @@
       document.getElementById('tripStartDate').value = trip.start_date.split('T')[0];
       document.getElementById('tripEndDate').value = trip.end_date.split('T')[0];
       document.getElementById('tripPerson').value = trip.created_by;
+      document.getElementById('tripCalendar').value = trip.calendar;
       document.getElementById('deleteBtn').style.display = 'block';
       document.getElementById('formError').innerHTML = '';
       document.getElementById('tripModal').classList.add('active');
@@ -714,6 +800,7 @@
       document.getElementById('formError').innerHTML = '';
       selectedTrip = null;
 
+      document.getElementById('tripCalendar').value = activeCalendar;
       if (dateStr) {
         document.getElementById('tripStartDate').value = dateStr;
         document.getElementById('tripEndDate').value = dateStr;
@@ -733,6 +820,7 @@
       const startDate = document.getElementById('tripStartDate').value;
       const endDate = document.getElementById('tripEndDate').value;
       const createdBy = document.getElementById('tripPerson').value;
+      const calendar = document.getElementById('tripCalendar').value;
 
       if (!name || !startDate || !endDate || !createdBy) {
         document.getElementById('formError').innerHTML = '<div class="error">All fields are required</div>';
@@ -754,7 +842,7 @@
         if (selectedTrip) {
           const { data, error } = await db
             .from('trips')
-            .update({ name, start_date: startDate, end_date: endDate, created_by: createdBy })
+            .update({ name, start_date: startDate, end_date: endDate, created_by: createdBy, calendar })
             .eq('id', selectedTrip.id)
             .select();
           if (error) throw error;
@@ -763,7 +851,7 @@
         } else {
           const { data, error } = await db
             .from('trips')
-            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy })
+            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy, calendar })
             .select();
           if (error) throw error;
           if (!data || data.length === 0) rejectBadKey();
@@ -827,6 +915,7 @@
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') nextMonth();
     });
 
+    markActiveTab();
     await fetchTrips();
     renderCalendar();
 
