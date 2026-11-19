@@ -221,6 +221,7 @@ async function main() {
   const { data: trips, error } = await supabase
     .from('trips')
     .select('*')
+    .eq('calendar', 'personal') // the weekly email covers the Personal tab only
     .order('start_date', { ascending: true });
 
   if (error) { console.error('Error fetching trips:', error); process.exit(1); }
