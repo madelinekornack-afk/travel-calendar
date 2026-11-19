@@ -191,6 +191,16 @@
     .trip-badge.fiance { background: var(--phil); }
     .trip-badge.both { background: var(--both); }
 
+    /* Added without a color yet: an outlined bar, filled in once someone picks who it's for. */
+    .trip-badge.unset {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: inset 0 0 0 1.5px var(--muted);
+    }
+
+    /* Days being swept with the mouse to make a multi-day entry. */
+    .day.picking { background: #EFE3D3 !important; }
+
     .day {
       padding: 6px 8px;
       cursor: pointer;
@@ -342,6 +352,32 @@
     .legend-swatch.madeline { background: var(--madeline); }
     .legend-swatch.fiance { background: var(--phil); }
     .legend-swatch.both { background: var(--both); }
+    .legend-swatch.unset,
+
+    .date-row { display: flex; gap: 10px; }
+    .date-row .form-group { flex: 1; }
+
+    /* Color chips: pick who an entry is for with one click. */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink-soft);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .chip:hover { border-color: var(--muted); color: var(--ink); }
+    .chip.selected { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+    .chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .chip .dot.madeline { background: var(--madeline); }
+    .chip .dot.fiance { background: var(--phil); }
+    .chip .dot.both { background: var(--both); }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
     /* ===== MOBILE ===== */
     @media (max-width: 768px) {
@@ -452,37 +488,41 @@
       <div class="legend-item"><div class="legend-swatch madeline"></div> Madeline</div>
       <div class="legend-item"><div class="legend-swatch fiance"></div> Phil</div>
       <div class="legend-item"><div class="legend-swatch both"></div> Both</div>
+      <div class="legend-item"><div class="legend-swatch unset"></div> No color yet</div>
     </div>
   </div>
 
   <!-- Add/Edit Trip Modal -->
   <div id="tripModal" class="modal">
     <div class="modal-content">
-      <h3 id="modalTitle">Add Trip</h3>
+      <h3 id="modalTitle">Add</h3>
       <form id="tripForm" onsubmit="saveTrip(event)">
         <div class="form-group">
-          <label for="tripName">Trip Name / Destination *</label>
-          <input type="text" id="tripName" required placeholder="e.g., Hawaii Vacation">
+          <label for="tripName">What</label>
+          <input type="text" id="tripName" required autocomplete="off" placeholder="Hawaii, dentist, launch day">
+        </div>
+
+        <div class="date-row">
+          <div class="form-group">
+            <label for="tripStartDate">From</label>
+            <input type="date" id="tripStartDate" required>
+          </div>
+          <div class="form-group">
+            <label for="tripEndDate">To</label>
+            <input type="date" id="tripEndDate" required>
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="tripStartDate">Start Date *</label>
-          <input type="date" id="tripStartDate" required>
-        </div>
-
-        <div class="form-group">
-          <label for="tripEndDate">End Date *</label>
-          <input type="date" id="tripEndDate" required>
-        </div>
-
-        <div class="form-group">
-          <label for="tripPerson">Who's Going? *</label>
-          <select id="tripPerson" required>
-            <option value="">Select...</option>
-            <option value="madeline">Madeline</option>
-            <option value="fiance">Phil</option>
-            <option value="both">Both of us</option>
-          </select>
+          <label>Color <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+          <input type="hidden" id="tripPerson">
+          <div class="chips" id="colorChips">
+            <button type="button" class="chip" data-person=""><span class="dot unset"></span>None</button>
+            <button type="button" class="chip" data-person="madeline"><span class="dot madeline"></span>Madeline</button>
+            <button type="button" class="chip" data-person="fiance"><span class="dot fiance"></span>Phil</button>
+            <button type="button" class="chip" data-person="both"><span class="dot both"></span>Both</button>
+          </div>
+          <div class="hint" id="colorHint"></div>
         </div>
 
         <div class="form-group">
@@ -496,7 +536,7 @@
         <div id="formError"></div>
 
         <div class="form-buttons">
-          <button type="submit" class="btn-primary">Save Trip</button>
+          <button type="submit" class="btn-primary">Save</button>
           <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
           <button type="button" id="deleteBtn" class="btn-danger" onclick="deleteTrip()" style="display: none;">Delete</button>
         </div>
@@ -743,7 +783,7 @@
           const width = cellWidth * daysShown;
 
           html += `
-            <div class="multi-day-event trip-badge ${trip.created_by}" style="left: calc(${left}% + 4px); width: calc(${width}% - 8px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
+            <div class="multi-day-event trip-badge ${trip.created_by || 'unset'}" style="left: calc(${left}% + 4px); width: calc(${width}% - 8px); top: ${topPx}px;" onclick="event.stopPropagation(); editTrip('${trip.id}')">
               ${escapeHtml(trip.name)}
             </div>
           `;
@@ -764,7 +804,7 @@
           const monthLabel = dayNum === 1 ? dayDate.toLocaleDateString('en-US', { month: 'short' }) : '';
 
           html += `
-            <div class="day ${isToday} ${monthClass}" data-date="${dateStr}" onclick="openTripModal('${dateStr}')">
+            <div class="day ${isToday} ${monthClass}" data-date="${dateStr}">
               <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span>' : ''}<span class="num">${dayNum}</span></div>
             </div>
           `;
@@ -780,34 +820,86 @@
       if (!trip) return;
 
       selectedTrip = trip;
-      document.getElementById('modalTitle').textContent = 'Edit Trip';
+      document.getElementById('modalTitle').textContent = 'Edit';
       document.getElementById('tripName').value = trip.name;
       document.getElementById('tripStartDate').value = trip.start_date.split('T')[0];
       document.getElementById('tripEndDate').value = trip.end_date.split('T')[0];
-      document.getElementById('tripPerson').value = trip.created_by;
+      setPerson(trip.created_by || '');
+      document.getElementById('colorHint').textContent = 'Click a color to save it right away.';
       document.getElementById('tripCalendar').value = trip.calendar;
       document.getElementById('deleteBtn').style.display = 'block';
       document.getElementById('formError').innerHTML = '';
       document.getElementById('tripModal').classList.add('active');
     };
 
-    window.openTripModal = (dateStr = null) => {
-      // Always open Add Trip when clicking a day cell
-      // Clicking a bar directly calls editTrip instead
-      document.getElementById('modalTitle').textContent = 'Add Trip';
+    // Clicking a day (or sweeping across several) opens Add; clicking a bar calls editTrip.
+    window.openTripModal = (startStr = null, endStr = startStr) => {
+      document.getElementById('modalTitle').textContent = 'Add';
       document.getElementById('tripForm').reset();
       document.getElementById('deleteBtn').style.display = 'none';
       document.getElementById('formError').innerHTML = '';
       selectedTrip = null;
 
       document.getElementById('tripCalendar').value = activeCalendar;
-      if (dateStr) {
-        document.getElementById('tripStartDate').value = dateStr;
-        document.getElementById('tripEndDate').value = dateStr;
+      setPerson('');
+      document.getElementById('colorHint').textContent = 'Skip it and color it later.';
+      if (startStr) {
+        document.getElementById('tripStartDate').value = startStr;
+        document.getElementById('tripEndDate').value = endStr;
       }
 
       document.getElementById('tripModal').classList.add('active');
+      document.getElementById('tripName').focus();
     };
+
+    function setPerson(person) {
+      document.getElementById('tripPerson').value = person;
+      document.querySelectorAll('#colorChips .chip').forEach(c =>
+        c.classList.toggle('selected', c.dataset.person === person));
+    }
+
+    // Picking a color on an existing entry saves straight away, so coloring
+    // something in later is two clicks: the bar, then the color.
+    document.getElementById('colorChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      setPerson(chip.dataset.person);
+      if (selectedTrip) document.getElementById('tripForm').requestSubmit();
+    });
+
+    // Moving the start past the end drags the end along with it.
+    document.getElementById('tripStartDate').addEventListener('change', (e) => {
+      const end = document.getElementById('tripEndDate');
+      if (!end.value || end.value < e.target.value) end.value = e.target.value;
+    });
+
+    // Press on a day and sweep across others to add a multi-day entry in one go.
+    let pickStart = null;
+    function markPicking(endStr) {
+      const [lo, hi] = [pickStart, endStr].sort();
+      document.querySelectorAll('.day').forEach(d =>
+        d.classList.toggle('picking', d.dataset.date >= lo && d.dataset.date <= hi));
+    }
+    const calendarEl = document.getElementById('calendar');
+    calendarEl.addEventListener('mousedown', (e) => {
+      const day = e.target.closest('.day');
+      if (!day || e.button !== 0) return;
+      pickStart = day.dataset.date;
+      markPicking(pickStart);
+      e.preventDefault();
+    });
+    calendarEl.addEventListener('mouseover', (e) => {
+      const day = e.target.closest('.day');
+      if (pickStart && day) markPicking(day.dataset.date);
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (!pickStart) return;
+      const day = e.target.closest && e.target.closest('.day');
+      const [lo, hi] = [pickStart, day ? day.dataset.date : pickStart].sort();
+      pickStart = null;
+      document.querySelectorAll('.day.picking').forEach(d => d.classList.remove('picking'));
+      openTripModal(lo, hi);
+    });
 
     window.closeModal = () => {
       document.getElementById('tripModal').classList.remove('active');
@@ -822,8 +914,8 @@
       const createdBy = document.getElementById('tripPerson').value;
       const calendar = document.getElementById('tripCalendar').value;
 
-      if (!name || !startDate || !endDate || !createdBy) {
-        document.getElementById('formError').innerHTML = '<div class="error">All fields are required</div>';
+      if (!name || !startDate || !endDate) {
+        document.getElementById('formError').innerHTML = '<div class="error">Add a name and dates.</div>';
         return;
       }
 
@@ -842,20 +934,20 @@
         if (selectedTrip) {
           const { data, error } = await db
             .from('trips')
-            .update({ name, start_date: startDate, end_date: endDate, created_by: createdBy, calendar })
+            .update({ name, start_date: startDate, end_date: endDate, created_by: createdBy || null, calendar })
             .eq('id', selectedTrip.id)
             .select();
           if (error) throw error;
           if (!data || data.length === 0) rejectBadKey();
-          showMessage('Trip updated!', 'success');
+          showMessage('Saved', 'success');
         } else {
           const { data, error } = await db
             .from('trips')
-            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy, calendar })
+            .insert({ name, start_date: startDate, end_date: endDate, created_by: createdBy || null, calendar })
             .select();
           if (error) throw error;
           if (!data || data.length === 0) rejectBadKey();
-          showMessage('Trip added!', 'success');
+          showMessage('Added', 'success');
         }
 
         await fetchTrips();

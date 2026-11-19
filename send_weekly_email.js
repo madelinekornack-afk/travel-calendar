@@ -23,7 +23,8 @@ function getMonday() {
 function getColor(who) {
   if (who === 'madeline') return '#C8664A';
   if (who === 'fiance') return '#3F7F8C';
-  return '#7A5C99'; // both
+  if (who === 'both') return '#7A5C99';
+  return '#A39886'; // no color picked yet
 }
 
 function getTripsForDay(dateStr, trips) {
