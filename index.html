@@ -22,6 +22,12 @@
       --madeline: #C8664A;
       --phil: #3F7F8C;
       --both: #7A5C99;
+      /* Maxinomics colors mean the kind of entry, not who it's for. */
+      --longform: #C8664A;
+      --short: #D9A441;
+      --shoot: #3F7F8C;
+      --event: #7A5C99;
+      --ad: #6B8E4E;
       --serif: 'Fraunces', Georgia, serif;
     }
 
@@ -187,9 +193,15 @@
 
     .multi-day-event:hover { filter: brightness(0.92); }
 
-    .trip-badge.madeline { background: var(--madeline); }
-    .trip-badge.fiance { background: var(--phil); }
-    .trip-badge.both { background: var(--both); }
+    /* One color per key, shared by bars, legend swatches and chip dots. */
+    :is(.trip-badge, .legend-swatch, .chip .dot).madeline { background: var(--madeline); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).fiance { background: var(--phil); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).both { background: var(--both); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).longform { background: var(--longform); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).short { background: var(--short); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).shoot { background: var(--shoot); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).event { background: var(--event); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).ad { background: var(--ad); }
 
     /* Added without a color yet: an outlined bar, filled in once someone picks who it's for. */
     .trip-badge.unset {
@@ -349,10 +361,8 @@
 
     .legend-item { display: flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
-    .legend-swatch.madeline { background: var(--madeline); }
-    .legend-swatch.fiance { background: var(--phil); }
-    .legend-swatch.both { background: var(--both); }
     .legend-swatch.unset,
+    .chip .dot.unset { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--muted); }
 
     .date-row { display: flex; gap: 10px; }
     .date-row .form-group { flex: 1; }
@@ -374,9 +384,6 @@
     .chip:hover { border-color: var(--muted); color: var(--ink); }
     .chip.selected { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
     .chip .dot { width: 10px; height: 10px; border-radius: 50%; }
-    .chip .dot.madeline { background: var(--madeline); }
-    .chip .dot.fiance { background: var(--phil); }
-    .chip .dot.both { background: var(--both); }
     .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
     /* ===== MOBILE ===== */
@@ -484,12 +491,7 @@
         <div class="loading">Loading calendar...</div>
       </div>
     </div>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-swatch madeline"></div> Madeline</div>
-      <div class="legend-item"><div class="legend-swatch fiance"></div> Phil</div>
-      <div class="legend-item"><div class="legend-swatch both"></div> Both</div>
-      <div class="legend-item"><div class="legend-swatch unset"></div> No color yet</div>
-    </div>
+    <div class="legend" id="legend"></div>
   </div>
 
   <!-- Add/Edit Trip Modal -->
@@ -516,12 +518,7 @@
         <div class="form-group">
           <label>Color <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
           <input type="hidden" id="tripPerson">
-          <div class="chips" id="colorChips">
-            <button type="button" class="chip" data-person=""><span class="dot unset"></span>None</button>
-            <button type="button" class="chip" data-person="madeline"><span class="dot madeline"></span>Madeline</button>
-            <button type="button" class="chip" data-person="fiance"><span class="dot fiance"></span>Phil</button>
-            <button type="button" class="chip" data-person="both"><span class="dot both"></span>Both</button>
-          </div>
+          <div class="chips" id="colorChips"></div>
           <div class="hint" id="colorHint"></div>
         </div>
 
@@ -601,6 +598,27 @@
       return 'personal';
     })();
 
+    // Each tab has its own colors. Personal colors say who an entry is for;
+    // Maxinomics colors say what kind of entry it is. The key is stored in
+    // trips.created_by. To add a color: add a line here and a CSS variable.
+    const COLORS = {
+      personal: [['madeline', 'Madeline'], ['fiance', 'Phil'], ['both', 'Both']],
+      maxinomics: [['longform', 'Long form'], ['short', 'Short'], ['shoot', 'Shoot'],
+                   ['event', 'Event'], ['ad', 'Advertisement']],
+    };
+
+    function renderColorChips(calendar) {
+      document.getElementById('colorChips').innerHTML = [['', 'None'], ...COLORS[calendar]]
+        .map(([key, label]) => `<button type="button" class="chip" data-person="${key}"><span class="dot ${key || 'unset'}"></span>${label}</button>`)
+        .join('');
+    }
+
+    function renderLegend() {
+      document.getElementById('legend').innerHTML = [...COLORS[activeCalendar], ['unset', 'No color yet']]
+        .map(([key, label]) => `<div class="legend-item"><div class="legend-swatch ${key}"></div> ${label}</div>`)
+        .join('');
+    }
+
     function markActiveTab() {
       document.querySelectorAll('.tabs button').forEach(b => {
         const on = b.dataset.calendar === activeCalendar;
@@ -615,6 +633,7 @@
       try { localStorage.setItem(TAB_STORAGE, calendar); } catch {}
       history.replaceState(null, '', '#' + calendar);
       markActiveTab();
+      renderLegend();
       await fetchTrips();
       renderCalendar();
     };
@@ -824,9 +843,10 @@
       document.getElementById('tripName').value = trip.name;
       document.getElementById('tripStartDate').value = trip.start_date.split('T')[0];
       document.getElementById('tripEndDate').value = trip.end_date.split('T')[0];
+      document.getElementById('tripCalendar').value = trip.calendar;
+      renderColorChips(trip.calendar);
       setPerson(trip.created_by || '');
       document.getElementById('colorHint').textContent = 'Click a color to save it right away.';
-      document.getElementById('tripCalendar').value = trip.calendar;
       document.getElementById('deleteBtn').style.display = 'block';
       document.getElementById('formError').innerHTML = '';
       document.getElementById('tripModal').classList.add('active');
@@ -841,6 +861,7 @@
       selectedTrip = null;
 
       document.getElementById('tripCalendar').value = activeCalendar;
+      renderColorChips(activeCalendar);
       setPerson('');
       document.getElementById('colorHint').textContent = 'Skip it and color it later.';
       if (startStr) {
@@ -865,6 +886,13 @@
       if (!chip) return;
       setPerson(chip.dataset.person);
       if (selectedTrip) document.getElementById('tripForm').requestSubmit();
+    });
+
+    // Moving an entry to the other calendar swaps in that calendar's colors.
+    // Its old color means nothing there, so it starts uncolored.
+    document.getElementById('tripCalendar').addEventListener('change', (e) => {
+      renderColorChips(e.target.value);
+      setPerson('');
     });
 
     // Moving the start past the end drags the end along with it.
@@ -1008,6 +1036,7 @@
     });
 
     markActiveTab();
+    renderLegend();
     await fetchTrips();
     renderCalendar();
 
