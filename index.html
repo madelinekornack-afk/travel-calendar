@@ -406,6 +406,19 @@
     .goal-sub { font-size: 12px; color: var(--muted); }
     .goal-bal small { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: var(--muted); }
     .goal.focus .pace { color: var(--ink-soft); font-weight: 500; }
+    .goal-left { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+    .focus-input {
+      font: inherit;
+      color: inherit;
+      width: 4.2ch;
+      padding: 0;
+      border: none;
+      border-bottom: 1.5px dashed var(--muted);
+      background: transparent;
+      cursor: text;
+    }
+    .focus-input:hover, .focus-input:focus { outline: none; border-bottom: 1.5px solid var(--ink); }
+    .edit-mark { font-size: 13px; color: var(--muted); margin-left: 3px; }
     .goal-add { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
     .goal-add button, .goals-unlock {
       border: 1px solid var(--line);
@@ -773,7 +786,12 @@
       const elapsed = Math.round((new Date(today) - new Date(ps)) / 864e5);
       const onTrack = balance + done - goal.target * elapsed / len >= 0;
       const total = (fromPaper ? goal.startTotal || 0 : 0) + doneBetween(goal, from, today);
-      return { balance, done, onTrack, total };
+      // Still to do this year: what every period left (this one included)
+      // asks for, less the surplus and what's done this period already.
+      let periodsLeft = 0;
+      for (let p = ps; p <= today.slice(0, 4) + '-12-31'; p = addDays(periodOf(goal.per, p)[1], 1)) periodsLeft++;
+      const left = Math.max(0, goal.target * periodsLeft - balance - done);
+      return { balance, done, onTrack, total, left };
     }
 
     // +11.5 reads as +11½, the way it's written on paper.
@@ -787,6 +805,8 @@
 
     function renderGoals() {
       const el = document.getElementById('goals');
+      // Don't redraw under someone typing a focus total.
+      if (document.activeElement?.classList.contains('focus-input')) return;
       if (activeCalendar !== 'personal') { el.innerHTML = ''; return; }
       if (!goalsUnlocked) {
         el.innerHTML = '<button class="goals-unlock" onclick="unlockGoals()">Show goals</button>';
@@ -808,6 +828,7 @@
             <div class="goal-top"><span>${goal.label}</span><span class="pace">${s.onTrack ? 'On track' : 'Behind'}</span></div>
             <div class="goal-bal">${fmtBalance(s.balance)}</div>
             <div class="goal-sub">${sub}</div>
+            <div class="goal-left">${s.left ? `${goal.per === 'day' ? Math.ceil(s.left) + ' days' : fmtCount(Math.ceil(s.left * 2) / 2)} to go by Dec 31` : 'Year goal covered'}</div>
             <div class="goal-add">${buttons}</div>
           </div>`;
       }).join('') + focusCard();
@@ -835,17 +856,24 @@
       const left = FOCUS_GOAL - (focusTotal || 0);
       const daysToEnd = daysUntil('12-31');
       const daysToDec20 = daysUntil('12-20');
-      let sub;
-      if (focusTotal === null) sub = 'Enter your Forest total';
-      else if (left <= 0) sub = 'Goal reached';
-      else sub = `${fmtHm(left / Math.max(daysToEnd, 1))} a day to finish`
-        + (daysToDec20 > 0 ? ` · ${fmtHm(left / daysToDec20)} by Dec 20` : '');
+      let sub, leftLine;
+      if (focusTotal === null) { sub = 'Type your Forest total above'; leftLine = ''; }
+      else if (left <= 0) { sub = 'Goal reached'; leftLine = 'Year goal covered'; }
+      else {
+        sub = `${fmtHm(left / Math.max(daysToEnd, 1))} a day to finish`
+          + (daysToDec20 > 0 ? ` · ${fmtHm(left / daysToDec20)} by Dec 20` : '');
+        leftLine = `${fmtHm(left).replace(/h00m$/, 'h')} to go by Dec 31`;
+      }
+      const shown = focusTotal === null ? '' : String(Math.round(focusTotal * 100) / 100);
+      // The total is an input styled as the big number: click it, type, Enter.
       return `
         <div class="goal focus">
           <div class="goal-top"><span>Focus hours</span><span class="pace">${daysToEnd} days left</span></div>
-          <div class="goal-bal">${focusTotal === null ? '—' : fmtCount(Math.round(focusTotal * 2) / 2).toLocaleString()} <small>of ${FOCUS_GOAL.toLocaleString()}</small></div>
+          <div class="goal-bal"><input class="focus-input" value="${shown}" placeholder="—" inputmode="decimal"
+            title="Click to type your Forest total" aria-label="Focus hours so far this year"
+            onchange="saveFocus(this.value)" onkeydown="if (event.key === 'Enter') this.blur()"><span class="edit-mark">✎</span> <small>of ${FOCUS_GOAL.toLocaleString()}</small></div>
           <div class="goal-sub">${sub}</div>
-          <div class="goal-add"><button onclick="updateFocus()">Update</button></div>
+          <div class="goal-left">${leftLine}</div>
         </div>`;
     }
 
@@ -855,11 +883,9 @@
       return m ? Number(m[1]) + (m[2] ? Number(m[2]) / 60 : 0) : null;
     }
 
-    window.updateFocus = async () => {
-      const text = window.prompt('Focus hours so far this year (from Forest):', focusTotal ?? '');
-      if (text === null) return;
-      const hours = parseHours(text);
-      if (hours === null) { showMessage('Type hours like 1022 or 1022:30', 'error'); return; }
+    window.saveFocus = async (text) => {
+      const hours = parseHours(String(text).replace(/,/g, ''));
+      if (hours === null || hours === focusTotal) { renderGoals(); return; }
       const db = getWriteClient();
       if (!db) return;
       try {
