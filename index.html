@@ -712,15 +712,16 @@
     // Strength (upper or lower) counts as a workout too.
     const strength = l => (l.strength_upper || 0) + (l.strength_lower || 0);
     const GOALS = [
-      { label: 'Strength', per: 'week', target: 2, through: '2026-11-07', start: 7,
+      { label: 'Strength', per: 'week', target: 2, through: '2026-10-31', start: 9,
         count: strength, buttons: [['strength_upper', '+ Upper'], ['strength_lower', '+ Lower']] },
-      { label: 'Workouts', per: 'week', target: 4.5, through: '2026-11-07', start: 11.5,
+      { label: 'Workouts', per: 'week', target: 4.5, through: '2026-10-31', start: 14,
         count: l => strength(l) + (l.workout || 0), buttons: [['workout', '+ Workout']] },
       // Half the days of the year. 157 days done by Oct 31 (day 304 of the year).
       { label: 'No social media', per: 'day', target: 0.5, through: '2026-10-31', start: 157 - 304 / 2,
         startTotal: 157, count: l => l.nosocial || 0, buttons: [['nosocial', 'Today']] },
-      { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 0,
-        count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
+      // 96 meditations by Oct 31, against 10 a month for ten months.
+      { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 96 - 100,
+        startTotal: 96, count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
     ];
 
     function addDays(dateStr, n) {
@@ -788,7 +789,7 @@
       el.innerHTML = GOALS.map(goal => {
         const s = goalStatus(goal);
         const sub = goal.per === 'week' ? `This week: ${fmtCount(s.done)} of ${fmtCount(goal.target)}`
-          : goal.per === 'month' ? `${new Date().toLocaleDateString('en-US', { month: 'long' })}: ${s.done} of ${goal.target}`
+          : goal.per === 'month' ? `${new Date().toLocaleDateString('en-US', { month: 'long' })}: ${fmtCount(s.done)} of ${goal.target} · ${fmtCount(s.total)} this year`
           : `${s.total} days this year`;
         const buttons = goal.buttons.map(([kind, label]) => {
           const done = kind === 'nosocial' && todayLog.nosocial;
