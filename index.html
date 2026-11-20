@@ -387,7 +387,7 @@
     .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
     /* ===== Goals (Personal tab) ===== */
-    .goals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-bottom: 12px; flex-shrink: 0; }
+    .goals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding-bottom: 12px; flex-shrink: 0; }
     .goals:empty { display: none; }
     .goal {
       background: #fff;
@@ -404,6 +404,8 @@
     .goal.behind .pace, .goal.behind .goal-bal { color: var(--madeline); }
     .goal-bal { font-family: var(--serif); font-size: 24px; font-weight: 500; line-height: 1.15; }
     .goal-sub { font-size: 12px; color: var(--muted); }
+    .goal-bal small { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: var(--muted); }
+    .goal.focus .pace { color: var(--ink-soft); font-weight: 500; }
     .goal-add { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
     .goal-add button, .goals-unlock {
       border: 1px solid var(--line);
@@ -808,8 +810,70 @@
             <div class="goal-sub">${sub}</div>
             <div class="goal-add">${buttons}</div>
           </div>`;
-      }).join('');
+      }).join('') + focusCard();
     }
+
+    // ===== Focus hours =====
+    // Forest keeps the real number, so she types her running total in; the
+    // card works out how much a day it takes to reach the goal by Dec 31.
+    const FOCUS_GOAL = 1200;
+    let focusTotal = null;   // latest total typed in this year, in hours
+
+    function fmtHm(h) {
+      let m = Math.round(h * 60);
+      return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`;
+    }
+
+    // Days from tomorrow through the given day of December, never counting today.
+    function daysUntil(monthDay) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return Math.round((new Date(now.getFullYear() + '-' + monthDay + 'T00:00:00') - today) / 864e5);
+    }
+
+    function focusCard() {
+      const left = FOCUS_GOAL - (focusTotal || 0);
+      const daysToEnd = daysUntil('12-31');
+      const daysToDec20 = daysUntil('12-20');
+      let sub;
+      if (focusTotal === null) sub = 'Enter your Forest total';
+      else if (left <= 0) sub = 'Goal reached';
+      else sub = `${fmtHm(left / Math.max(daysToEnd, 1))} a day to finish`
+        + (daysToDec20 > 0 ? ` · ${fmtHm(left / daysToDec20)} by Dec 20` : '');
+      return `
+        <div class="goal focus">
+          <div class="goal-top"><span>Focus hours</span><span class="pace">${daysToEnd} days left</span></div>
+          <div class="goal-bal">${focusTotal === null ? '—' : fmtCount(Math.round(focusTotal * 2) / 2).toLocaleString()} <small>of ${FOCUS_GOAL.toLocaleString()}</small></div>
+          <div class="goal-sub">${sub}</div>
+          <div class="goal-add"><button onclick="updateFocus()">Update</button></div>
+        </div>`;
+    }
+
+    // Takes 1022, 1022.5, 1022:30 or 1022h30m.
+    function parseHours(text) {
+      const m = String(text).trim().match(/^(\d+(?:\.\d+)?)\s*(?:h|:)?\s*(?:(\d+)\s*m?)?$/i);
+      return m ? Number(m[1]) + (m[2] ? Number(m[2]) / 60 : 0) : null;
+    }
+
+    window.updateFocus = async () => {
+      const text = window.prompt('Focus hours so far this year (from Forest):', focusTotal ?? '');
+      if (text === null) return;
+      const hours = parseHours(text);
+      if (hours === null) { showMessage('Type hours like 1022 or 1022:30', 'error'); return; }
+      const db = getWriteClient();
+      if (!db) return;
+      try {
+        const { data, error } = await db.from('focus_hours')
+          .insert({ recorded_on: toLocalDateStr(new Date()), hours: Math.round(hours * 100) / 100 }).select();
+        if (error) throw error;
+        if (!data.length) rejectBadKey();
+        focusTotal = hours;
+        renderGoals();
+      } catch (error) {
+        console.error('Error saving focus hours:', error);
+        showMessage('Error: ' + error.message, 'error');
+      }
+    };
 
     function dayMarks(dateStr) {
       const log = goalLogs[dateStr];
@@ -831,6 +895,11 @@
       goalLogs = {};
       data.forEach(r => { (goalLogs[r.day] ||= {})[r.kind] = Number(r.count); });
       goalsUnlocked = true;
+
+      const { data: focus } = await db.from('focus_hours').select('hours')
+        .gte('recorded_on', new Date().getFullYear() + '-01-01')
+        .order('recorded_on', { ascending: false }).order('created_at', { ascending: false }).limit(1);
+      focusTotal = focus && focus.length ? Number(focus[0].hours) : null;
     }
 
     window.unlockGoals = async () => {
