@@ -418,29 +418,10 @@
     .goal-add button.done { background: var(--ink); border-color: var(--ink); color: var(--paper); }
     .goals-unlock { justify-self: start; grid-column: 1 / -1; }
 
-    /* What got logged on a day, in its bottom-right corner. */
-    /* What got logged on a day: small labeled tags along its bottom edge. */
-    .day-marks {
-      position: absolute;
-      left: 6px;
-      right: 6px;
-      bottom: 5px;
-      display: flex;
-      flex-wrap: wrap-reverse;
-      gap: 3px;
-      pointer-events: none;
-    }
-    .log-tag {
-      font-size: 11px;
-      line-height: 16px;
-      padding: 0 6px;
-      border-radius: 999px;
-      background: #fff;
-      border: 1px solid var(--line);
-      color: var(--ink-soft);
-      white-space: nowrap;
-    }
-    .log-tag.exercise { background: #F6E3DA; border-color: #EBCBBC; color: var(--ink); }
+    /* What got logged on a day: icons beside the date, top left. */
+    .day-marks { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; pointer-events: none; }
+    .log-icon { font-size: 17px; line-height: 1; display: inline-flex; align-items: baseline; }
+    .log-icon small { font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-left: 1px; }
 
     /* Log steppers at the top of a day's box. */
     .day-log { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -542,9 +523,9 @@
       .legend { padding: 10px 12px 14px; gap: 12px; font-size: 11px; }
       .goals { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px 10px 10px; }
       .goal-bal { font-size: 20px; }
-      .day-marks { left: 2px; right: 2px; bottom: 2px; gap: 2px; }
-      .log-tag { font-size: 9px; line-height: 13px; padding: 0 3px; }
-      .log-tag .tag-label { display: none; }
+      .day-marks { gap: 1px; margin-left: 2px; }
+      .log-icon { font-size: 11px; }
+      .log-icon small { font-size: 8px; }
       .modal-content { width: 95%; padding: 18px; }
     }
   </style>
@@ -833,11 +814,10 @@
     function dayMarks(dateStr) {
       const log = goalLogs[dateStr];
       if (!log || activeCalendar !== 'personal') return '';
-      return LOG_KINDS.filter(([kind]) => log[kind]).map(([kind, , icon, short]) => {
+      return LOG_KINDS.filter(([kind]) => log[kind]).map(([kind, label, icon]) => {
         const n = log[kind];
-        const amount = n === 1 ? '' : n === 0.5 ? ' ½' : ` ×${fmtCount(n)}`;
-        const exercise = ['strength_upper', 'strength_lower', 'workout', 'yoga'].includes(kind);
-        return `<span class="log-tag ${exercise ? 'exercise' : ''}">${icon}<span class="tag-label"> ${short}</span>${amount}</span>`;
+        const amount = n === 1 ? '' : n === 0.5 ? '½' : `×${fmtCount(n)}`;
+        return `<span class="log-icon" title="${label}${amount ? ' ' + amount : ''}">${icon}${amount ? `<small>${amount}</small>` : ''}</span>`;
       }).join('');
     }
 
@@ -1143,8 +1123,7 @@
 
           html += `
             <div class="day ${isToday} ${monthClass}" data-date="${dateStr}">
-              <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span>' : ''}<span class="num">${dayNum}</span></div>
-              <div class="day-marks">${dayMarks(dateStr)}</div>
+              <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span>' : ''}<span class="num">${dayNum}</span><span class="day-marks">${dayMarks(dateStr)}</span></div>
             </div>
           `;
         }
