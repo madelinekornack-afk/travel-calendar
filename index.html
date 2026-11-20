@@ -439,6 +439,17 @@
     }
     .stepper button:disabled { opacity: 0.35; cursor: default; }
     .stepper b { min-width: 14px; text-align: center; font-weight: 600; }
+    .stepper input {
+      width: 46px;
+      padding: 3px 4px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 600;
+      text-align: center;
+    }
 
     /* ===== MOBILE ===== */
     @media (max-width: 768px) {
@@ -683,32 +694,34 @@
 
     // ===== Goals =====
     // goal_logs holds one row per day and kind, with a count (two meditations
-    // in a day is count 2). Reading it needs the edit passphrase too.
+    // in a day is count 2; a half workout is 0.5). Reading it needs the edit
+    // passphrase too.
     const LOG_KINDS = [
-      ['strength', 'Strength', '💪'],
+      ['strength_upper', 'Strength · upper', '💪'],
+      ['strength_lower', 'Strength · lower', '🦵'],
       ['workout', 'Workout', '🏃'],
-      ['half', 'Half workout', '½'],
       ['meditation', 'Meditation', '🧘'],
       ['nosocial', 'No social media', '📵'],
     ];
-    let goalLogs = {};       // { 'YYYY-MM-DD': { strength: 1, meditation: 2, ... } }
+    let goalLogs = {};       // { 'YYYY-MM-DD': { strength_upper: 1, workout: 0.5, ... } }
     let goalsUnlocked = false;
 
     // Each goal accumulates over the year: the balance is what's done minus
     // what's due, so a big week covers a light one. `through` and `start` are
     // where the paper calendar left off (the balance at the end of that day).
-    // Strength counts as a workout too; a half workout counts as half.
+    // Strength (upper or lower) counts as a workout too.
+    const strength = l => (l.strength_upper || 0) + (l.strength_lower || 0);
     const GOALS = [
-      { label: 'Strength', per: 'week', target: 2, through: '2026-11-07', start: 7,
-        count: l => l.strength || 0, buttons: [['strength', '+ Strength']] },
-      { label: 'Workouts', per: 'week', target: 4.5, through: '2026-11-07', start: 11.5,
-        count: l => (l.strength || 0) + (l.workout || 0) + 0.5 * (l.half || 0),
-        buttons: [['workout', '+ Workout'], ['half', '+ Half']] },
+      { label: 'Strength', per: 'week', target: 2, through: '2026-10-31', start: 9,
+        count: strength, buttons: [['strength_upper', '+ Upper'], ['strength_lower', '+ Lower']] },
+      { label: 'Workouts', per: 'week', target: 4.5, through: '2026-10-31', start: 14,
+        count: l => strength(l) + (l.workout || 0), buttons: [['workout', '+ Workout']] },
       // Half the days of the year. 157 days done by Oct 31 (day 304 of the year).
       { label: 'No social media', per: 'day', target: 0.5, through: '2026-10-31', start: 157 - 304 / 2,
         startTotal: 157, count: l => l.nosocial || 0, buttons: [['nosocial', 'Today']] },
-      { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 0,
-        count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
+      // 96 meditations by Oct 31, against 10 a month for ten months.
+      { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 96 - 100,
+        startTotal: 96, count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
     ];
 
     function addDays(dateStr, n) {
@@ -776,7 +789,7 @@
       el.innerHTML = GOALS.map(goal => {
         const s = goalStatus(goal);
         const sub = goal.per === 'week' ? `This week: ${fmtCount(s.done)} of ${fmtCount(goal.target)}`
-          : goal.per === 'month' ? `${new Date().toLocaleDateString('en-US', { month: 'long' })}: ${s.done} of ${goal.target}`
+          : goal.per === 'month' ? `${new Date().toLocaleDateString('en-US', { month: 'long' })}: ${fmtCount(s.done)} of ${goal.target} · ${fmtCount(s.total)} this year`
           : `${s.total} days this year`;
         const buttons = goal.buttons.map(([kind, label]) => {
           const done = kind === 'nosocial' && todayLog.nosocial;
@@ -795,7 +808,7 @@
     function dayMarks(dateStr) {
       const log = goalLogs[dateStr];
       if (!log || activeCalendar !== 'personal') return '';
-      return LOG_KINDS.map(([kind, , icon]) => icon.repeat(Math.min(log[kind] || 0, 3))).join('');
+      return LOG_KINDS.map(([kind, , icon]) => icon.repeat(Math.min(Math.ceil(log[kind] || 0), 3))).join('');
     }
 
     async function fetchGoalLogs() {
@@ -806,7 +819,7 @@
         .gte('day', (new Date().getFullYear() - 1) + '-01-01').range(0, 9999);
       if (error) { console.error('Error fetching goals:', error); return; }
       goalLogs = {};
-      data.forEach(r => { (goalLogs[r.day] ||= {})[r.kind] = r.count; });
+      data.forEach(r => { (goalLogs[r.day] ||= {})[r.kind] = Number(r.count); });
       goalsUnlocked = true;
     }
 
@@ -820,7 +833,8 @@
     async function setLog(day, kind, count) {
       const db = getWriteClient();
       if (!db) return;
-      count = Math.max(0, kind === 'nosocial' ? Math.min(count, 1) : count);
+      // Counts go in halves: 1 by default, 0.5 for a half workout.
+      count = Math.max(0, Math.round((kind === 'nosocial' ? Math.min(count, 1) : count) * 2) / 2);
       try {
         const { data, error } = count
           ? await db.from('goal_logs').upsert({ day, kind, count, updated_at: new Date().toISOString() }).select()
@@ -856,9 +870,12 @@
       document.getElementById('dayLogRows').innerHTML = LOG_KINDS.map(([kind, label, icon]) => {
         const n = log[kind] || 0;
         const max = kind === 'nosocial' ? 1 : 99;
+        // The number is typeable, so a half workout is "+" then 0.5.
+        const value = kind === 'nosocial' ? `<b>${n}</b>`
+          : `<input type="number" inputmode="decimal" min="0" step="0.5" data-kind="${kind}" value="${n}" aria-label="${label} count">`;
         return `<div class="log-row"><span>${icon} ${label}</span><span class="stepper">
-          <button type="button" data-kind="${kind}" data-n="${n - 1}" ${n ? '' : 'disabled'} aria-label="Less">−</button>
-          <b>${n}</b>
+          <button type="button" data-kind="${kind}" data-n="${Math.max(0, n - 1)}" ${n ? '' : 'disabled'} aria-label="Less">−</button>
+          ${value}
           <button type="button" data-kind="${kind}" data-n="${n + 1}" ${n < max ? '' : 'disabled'} aria-label="More">+</button>
         </span></div>`;
       }).join('');
@@ -867,6 +884,10 @@
     document.getElementById('dayLogRows').addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (b) setLog(document.getElementById('dayLog').dataset.day, b.dataset.kind, Number(b.dataset.n));
+    });
+    document.getElementById('dayLogRows').addEventListener('change', (e) => {
+      const input = e.target.closest('input');
+      if (input) setLog(document.getElementById('dayLog').dataset.day, input.dataset.kind, Number(input.value) || 0);
     });
 
     // A single day on the Personal tab opens with its log on top.
