@@ -386,6 +386,60 @@
     .chip .dot { width: 10px; height: 10px; border-radius: 50%; }
     .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
 
+    /* ===== Goals (Personal tab) ===== */
+    .goals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-bottom: 12px; flex-shrink: 0; }
+    .goals:empty { display: none; }
+    .goal {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .goal-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--ink-soft); }
+    .goal-top .pace { font-size: 11px; font-weight: 600; color: var(--phil); }
+    .goal.behind .pace, .goal.behind .goal-bal { color: var(--madeline); }
+    .goal-bal { font-family: var(--serif); font-size: 24px; font-weight: 500; line-height: 1.15; }
+    .goal-sub { font-size: 12px; color: var(--muted); }
+    .goal-add { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .goal-add button, .goals-unlock {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink-soft);
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+    .goal-add button:hover, .goals-unlock:hover { border-color: var(--muted); color: var(--ink); }
+    .goal-add button.done { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+    .goals-unlock { justify-self: start; grid-column: 1 / -1; }
+
+    /* What got logged on a day, in its bottom-right corner. */
+    .day-marks { position: absolute; right: 6px; bottom: 4px; font-size: 11px; letter-spacing: 1px; pointer-events: none; }
+
+    /* Log steppers at the top of a day's box. */
+    .day-log { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .day-log h3 { margin-bottom: 8px !important; }
+    .log-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 14px; }
+    .stepper { display: inline-flex; align-items: center; gap: 8px; }
+    .stepper button {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .stepper button:disabled { opacity: 0.35; cursor: default; }
+    .stepper b { min-width: 14px; text-align: center; font-weight: 600; }
+
     /* ===== MOBILE ===== */
     @media (max-width: 768px) {
       html, body {
@@ -454,6 +508,9 @@
       .month-label { font-size: 11px; }
 
       .legend { padding: 10px 12px 14px; gap: 12px; font-size: 11px; }
+      .goals { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px 10px 10px; }
+      .goal-bal { font-size: 20px; }
+      .day-marks { right: 3px; bottom: 2px; font-size: 9px; letter-spacing: 0; }
       .modal-content { width: 95%; padding: 18px; }
     }
   </style>
@@ -486,6 +543,7 @@
     </div>
 
     <div class="calendar-wrapper">
+      <div class="goals" id="goals"></div>
       <div id="message"></div>
       <div id="calendar" class="month-view">
         <div class="loading">Loading calendar...</div>
@@ -497,6 +555,10 @@
   <!-- Add/Edit Trip Modal -->
   <div id="tripModal" class="modal">
     <div class="modal-content">
+      <div class="day-log" id="dayLog">
+        <h3 id="dayLogTitle"></h3>
+        <div id="dayLogRows"></div>
+      </div>
       <h3 id="modalTitle">Add</h3>
       <form id="tripForm" onsubmit="saveTrip(event)">
         <div class="form-group">
@@ -560,7 +622,7 @@
     function getWriteClient({ prompt = true } = {}) {
       let key = localStorage.getItem(TRIP_KEY_STORAGE);
       if (!key && prompt) {
-        key = (window.prompt('Enter the edit passphrase to change trips:') || '').trim();
+        key = (window.prompt('Enter the edit passphrase:') || '').trim();
         if (!key) return null;
         localStorage.setItem(TRIP_KEY_STORAGE, key);
       }
@@ -619,6 +681,203 @@
         .join('');
     }
 
+    // ===== Goals =====
+    // goal_logs holds one row per day and kind, with a count (two meditations
+    // in a day is count 2). Reading it needs the edit passphrase too.
+    const LOG_KINDS = [
+      ['strength', 'Strength', '💪'],
+      ['workout', 'Workout', '🏃'],
+      ['half', 'Half workout', '½'],
+      ['meditation', 'Meditation', '🧘'],
+      ['nosocial', 'No social media', '📵'],
+    ];
+    let goalLogs = {};       // { 'YYYY-MM-DD': { strength: 1, meditation: 2, ... } }
+    let goalsUnlocked = false;
+
+    // Each goal accumulates over the year: the balance is what's done minus
+    // what's due, so a big week covers a light one. `through` and `start` are
+    // where the paper calendar left off (the balance at the end of that day).
+    // Strength counts as a workout too; a half workout counts as half.
+    const GOALS = [
+      { label: 'Strength', per: 'week', target: 2, through: '2026-11-07', start: 7,
+        count: l => l.strength || 0, buttons: [['strength', '+ Strength']] },
+      { label: 'Workouts', per: 'week', target: 4.5, through: '2026-11-07', start: 11.5,
+        count: l => (l.strength || 0) + (l.workout || 0) + 0.5 * (l.half || 0),
+        buttons: [['workout', '+ Workout'], ['half', '+ Half']] },
+      // Half the days of the year. 157 days done by Oct 31 (day 304 of the year).
+      { label: 'No social media', per: 'day', target: 0.5, through: '2026-10-31', start: 157 - 304 / 2,
+        startTotal: 157, count: l => l.nosocial || 0, buttons: [['nosocial', 'Today']] },
+      { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 0,
+        count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
+    ];
+
+    function addDays(dateStr, n) {
+      const d = new Date(dateStr + 'T12:00:00');
+      d.setDate(d.getDate() + n);
+      return toLocalDateStr(d);
+    }
+
+    // The period holding a date. Goal weeks run Sunday to Saturday, as on paper.
+    function periodOf(per, dateStr) {
+      const d = new Date(dateStr + 'T12:00:00');
+      if (per === 'day') return [dateStr, dateStr];
+      if (per === 'week') return [addDays(dateStr, -d.getDay()), addDays(dateStr, 6 - d.getDay())];
+      const first = toLocalDateStr(new Date(d.getFullYear(), d.getMonth(), 1));
+      return [first, toLocalDateStr(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+    }
+
+    function doneBetween(goal, from, to) {
+      let n = 0;
+      for (let d = from; d <= to; d = addDays(d, 1)) n += goal.count(goalLogs[d] || {});
+      return n;
+    }
+
+    // Balance over finished periods (the paper number), plus the current period.
+    // A new year starts every goal again at zero.
+    function goalStatus(goal) {
+      const today = toLocalDateStr(new Date());
+      const yearStart = today.slice(0, 4) + '-01-01';
+      const fromPaper = goal.through >= yearStart;
+      const from = fromPaper ? addDays(goal.through, 1) : yearStart;
+      let balance = fromPaper ? goal.start : 0;
+      let [ps, pe] = periodOf(goal.per, from);
+      let done = 0;
+      for (; ps <= today; [ps, pe] = periodOf(goal.per, addDays(pe, 1))) {
+        done = doneBetween(goal, ps < from ? from : ps, pe < today ? pe : today);
+        if (pe < today) balance += done - goal.target;
+      }
+      // On track if what's done so far keeps up with what's due so far this period.
+      [ps, pe] = periodOf(goal.per, today);
+      const len = Math.round((new Date(pe) - new Date(ps)) / 864e5) + 1;
+      const elapsed = Math.round((new Date(today) - new Date(ps)) / 864e5);
+      const onTrack = balance + done - goal.target * elapsed / len >= 0;
+      const total = (fromPaper ? goal.startTotal || 0 : 0) + doneBetween(goal, from, today);
+      return { balance, done, onTrack, total };
+    }
+
+    // +11.5 reads as +11½, the way it's written on paper.
+    function fmtBalance(n) {
+      const sign = n > 0 ? '+' : n < 0 ? '−' : '';
+      const a = Math.abs(n);
+      const whole = Math.floor(a);
+      return sign + (a % 1 ? (whole || '') + '½' : whole);
+    }
+    const fmtCount = n => n % 1 ? (Math.floor(n) || '') + '½' : String(n);
+
+    function renderGoals() {
+      const el = document.getElementById('goals');
+      if (activeCalendar !== 'personal') { el.innerHTML = ''; return; }
+      if (!goalsUnlocked) {
+        el.innerHTML = '<button class="goals-unlock" onclick="unlockGoals()">Show goals</button>';
+        return;
+      }
+      const today = toLocalDateStr(new Date());
+      const todayLog = goalLogs[today] || {};
+      el.innerHTML = GOALS.map(goal => {
+        const s = goalStatus(goal);
+        const sub = goal.per === 'week' ? `This week: ${fmtCount(s.done)} of ${fmtCount(goal.target)}`
+          : goal.per === 'month' ? `${new Date().toLocaleDateString('en-US', { month: 'long' })}: ${s.done} of ${goal.target}`
+          : `${s.total} days this year`;
+        const buttons = goal.buttons.map(([kind, label]) => {
+          const done = kind === 'nosocial' && todayLog.nosocial;
+          return `<button class="${done ? 'done' : ''}" onclick="logToday('${kind}')">${done ? '✓ Today' : label}</button>`;
+        }).join('');
+        return `
+          <div class="goal ${s.onTrack ? '' : 'behind'}">
+            <div class="goal-top"><span>${goal.label}</span><span class="pace">${s.onTrack ? 'On track' : 'Behind'}</span></div>
+            <div class="goal-bal">${fmtBalance(s.balance)}</div>
+            <div class="goal-sub">${sub}</div>
+            <div class="goal-add">${buttons}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function dayMarks(dateStr) {
+      const log = goalLogs[dateStr];
+      if (!log || activeCalendar !== 'personal') return '';
+      return LOG_KINDS.map(([kind, , icon]) => icon.repeat(Math.min(log[kind] || 0, 3))).join('');
+    }
+
+    async function fetchGoalLogs() {
+      const db = getWriteClient({ prompt: false });
+      if (!db) { goalsUnlocked = false; return; }
+      // This year counts toward the goals; last year still shows on the calendar.
+      const { data, error } = await db.from('goal_logs').select('day,kind,count')
+        .gte('day', (new Date().getFullYear() - 1) + '-01-01').range(0, 9999);
+      if (error) { console.error('Error fetching goals:', error); return; }
+      goalLogs = {};
+      data.forEach(r => { (goalLogs[r.day] ||= {})[r.kind] = r.count; });
+      goalsUnlocked = true;
+    }
+
+    window.unlockGoals = async () => {
+      if (!getWriteClient()) return;
+      await fetchGoalLogs();
+      renderGoals();
+      renderCalendar();
+    };
+
+    async function setLog(day, kind, count) {
+      const db = getWriteClient();
+      if (!db) return;
+      count = Math.max(0, kind === 'nosocial' ? Math.min(count, 1) : count);
+      try {
+        const { data, error } = count
+          ? await db.from('goal_logs').upsert({ day, kind, count, updated_at: new Date().toISOString() }).select()
+          : await db.from('goal_logs').delete().eq('day', day).eq('kind', kind).select();
+        if (error) throw error;
+        if (count && !data.length) rejectBadKey();
+        const log = (goalLogs[day] ||= {});
+        if (count) log[kind] = count; else delete log[kind];
+        goalsUnlocked = true;
+        renderGoals();
+        renderCalendar();
+        if (document.getElementById('dayLog').dataset.day === day) renderDayLog(day);
+      } catch (error) {
+        console.error('Error saving goal log:', error);
+        showMessage('Error: ' + error.message, 'error');
+      }
+    }
+
+    // The buttons on the goal cards log for today. No social media is a
+    // yes/no for the day, so its button toggles.
+    window.logToday = (kind) => {
+      const today = toLocalDateStr(new Date());
+      const n = (goalLogs[today] || {})[kind] || 0;
+      setLog(today, kind, kind === 'nosocial' ? (n ? 0 : 1) : n + 1);
+    };
+
+    function renderDayLog(day) {
+      const box = document.getElementById('dayLog');
+      box.dataset.day = day;
+      document.getElementById('dayLogTitle').textContent =
+        new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const log = goalLogs[day] || {};
+      document.getElementById('dayLogRows').innerHTML = LOG_KINDS.map(([kind, label, icon]) => {
+        const n = log[kind] || 0;
+        const max = kind === 'nosocial' ? 1 : 99;
+        return `<div class="log-row"><span>${icon} ${label}</span><span class="stepper">
+          <button type="button" data-kind="${kind}" data-n="${n - 1}" ${n ? '' : 'disabled'} aria-label="Less">−</button>
+          <b>${n}</b>
+          <button type="button" data-kind="${kind}" data-n="${n + 1}" ${n < max ? '' : 'disabled'} aria-label="More">+</button>
+        </span></div>`;
+      }).join('');
+    }
+
+    document.getElementById('dayLogRows').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (b) setLog(document.getElementById('dayLog').dataset.day, b.dataset.kind, Number(b.dataset.n));
+    });
+
+    // A single day on the Personal tab opens with its log on top.
+    function showDayLog(day) {
+      const box = document.getElementById('dayLog');
+      const show = day && goalsUnlocked && activeCalendar === 'personal';
+      box.style.display = show ? '' : 'none';
+      box.dataset.day = show ? day : '';
+      if (show) renderDayLog(day);
+    }
+
     function markActiveTab() {
       document.querySelectorAll('.tabs button').forEach(b => {
         const on = b.dataset.calendar === activeCalendar;
@@ -634,6 +893,7 @@
       history.replaceState(null, '', '#' + calendar);
       markActiveTab();
       renderLegend();
+      renderGoals();
       await fetchTrips();
       renderCalendar();
     };
@@ -825,6 +1085,7 @@
           html += `
             <div class="day ${isToday} ${monthClass}" data-date="${dateStr}">
               <div class="day-number">${monthLabel ? '<span class="month-label">' + monthLabel + '</span>' : ''}<span class="num">${dayNum}</span></div>
+              <div class="day-marks">${dayMarks(dateStr)}</div>
             </div>
           `;
         }
@@ -847,6 +1108,7 @@
       renderColorChips(trip.calendar);
       setPerson(trip.created_by || '');
       document.getElementById('colorHint').textContent = 'Click a color to save it right away.';
+      showDayLog(null);
       document.getElementById('deleteBtn').style.display = 'block';
       document.getElementById('formError').innerHTML = '';
       document.getElementById('tripModal').classList.add('active');
@@ -864,6 +1126,8 @@
       renderColorChips(activeCalendar);
       setPerson('');
       document.getElementById('colorHint').textContent = 'Skip it and color it later.';
+      showDayLog(startStr === endStr ? startStr : null);
+      document.getElementById('modalTitle').textContent = document.getElementById('dayLog').dataset.day ? 'Add to calendar' : 'Add';
       if (startStr) {
         document.getElementById('tripStartDate').value = startStr;
         document.getElementById('tripEndDate').value = endStr;
@@ -1037,7 +1301,8 @@
 
     markActiveTab();
     renderLegend();
-    await fetchTrips();
+    await Promise.all([fetchTrips(), fetchGoalLogs()]);
+    renderGoals();
     renderCalendar();
 
     // Desktop: mouse wheel scrolls weeks (accumulate small deltas)
@@ -1096,7 +1361,8 @@
     }
 
     setInterval(async () => {
-      await fetchTrips();
+      await Promise.all([fetchTrips(), fetchGoalLogs()]);
+      renderGoals();
       renderCalendar();
     }, 30000);
   </script>
