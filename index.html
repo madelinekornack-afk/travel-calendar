@@ -568,13 +568,14 @@
     <div class="modal-content">
       <div class="day-log" id="dayLog">
         <h3 id="dayLogTitle"></h3>
+        <div class="hint" style="margin:-4px 0 8px">Saves as you tap.</div>
         <div id="dayLogRows"></div>
       </div>
       <h3 id="modalTitle">Add</h3>
       <form id="tripForm" onsubmit="saveTrip(event)">
         <div class="form-group">
           <label for="tripName">What</label>
-          <input type="text" id="tripName" required autocomplete="off" placeholder="Hawaii, dentist, launch day">
+          <input type="text" id="tripName" autocomplete="off" placeholder="Hawaii, dentist, launch day">
         </div>
 
         <div class="date-row">
@@ -606,7 +607,7 @@
         <div id="formError"></div>
 
         <div class="form-buttons">
-          <button type="submit" class="btn-primary">Save</button>
+          <button type="submit" class="btn-primary" id="saveBtn">Save</button>
           <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
           <button type="button" id="deleteBtn" class="btn-danger" onclick="deleteTrip()" style="display: none;">Delete</button>
         </div>
@@ -699,7 +700,8 @@
     const LOG_KINDS = [
       ['strength_upper', 'Strength · upper', '💪'],
       ['strength_lower', 'Strength · lower', '🦵'],
-      ['workout', 'Workout', '🏃'],
+      ['workout', 'Run', '🏃'],      // stored as 'workout'; it was named that first
+      ['yoga', 'Yoga', '🤸'],
       ['meditation', 'Meditation', '🧘'],
       ['nosocial', 'No social media', '📵'],
     ];
@@ -709,13 +711,13 @@
     // Each goal accumulates over the year: the balance is what's done minus
     // what's due, so a big week covers a light one. `through` and `start` are
     // where the paper calendar left off (the balance at the end of that day).
-    // Strength (upper or lower) counts as a workout too.
+    // Workouts are strength (upper or lower), runs and yoga.
     const strength = l => (l.strength_upper || 0) + (l.strength_lower || 0);
     const GOALS = [
       { label: 'Strength', per: 'week', target: 2, through: '2026-10-31', start: 9,
         count: strength, buttons: [['strength_upper', '+ Upper'], ['strength_lower', '+ Lower']] },
       { label: 'Workouts', per: 'week', target: 4.5, through: '2026-10-31', start: 14,
-        count: l => strength(l) + (l.workout || 0), buttons: [['workout', '+ Workout']] },
+        count: l => strength(l) + (l.workout || 0) + (l.yoga || 0), buttons: [['workout', '+ Run'], ['yoga', '+ Yoga']] },
       // Half the days of the year. 157 days done by Oct 31 (day 304 of the year).
       { label: 'No social media', per: 'day', target: 0.5, through: '2026-10-31', start: 157 - 304 / 2,
         startTotal: 157, count: l => l.nosocial || 0, buttons: [['nosocial', 'Today']] },
@@ -890,6 +892,13 @@
       if (input) setLog(document.getElementById('dayLog').dataset.day, input.dataset.kind, Number(input.value) || 0);
     });
 
+    // Save reads "Done" while there is only logging to finish.
+    function syncSaveLabel() {
+      const onlyLog = !document.getElementById('tripName').value.trim() && document.getElementById('dayLog').dataset.day;
+      document.getElementById('saveBtn').textContent = onlyLog ? 'Done' : 'Save';
+    }
+    document.getElementById('tripName').addEventListener('input', syncSaveLabel);
+
     // A single day on the Personal tab opens with its log on top.
     function showDayLog(day) {
       const box = document.getElementById('dayLog');
@@ -897,6 +906,7 @@
       box.style.display = show ? '' : 'none';
       box.dataset.day = show ? day : '';
       if (show) renderDayLog(day);
+      syncSaveLabel();
     }
 
     function markActiveTab() {
@@ -1226,6 +1236,12 @@
       const endDate = document.getElementById('tripEndDate').value;
       const createdBy = document.getElementById('tripPerson').value;
       const calendar = document.getElementById('tripCalendar').value;
+
+      // With a day's log open, an empty name just means "done logging".
+      if (!name && document.getElementById('dayLog').dataset.day) {
+        closeModal();
+        return;
+      }
 
       if (!name || !startDate || !endDate) {
         document.getElementById('formError').innerHTML = '<div class="error">Add a name and dates.</div>';
