@@ -419,7 +419,28 @@
     .goals-unlock { justify-self: start; grid-column: 1 / -1; }
 
     /* What got logged on a day, in its bottom-right corner. */
-    .day-marks { position: absolute; right: 6px; bottom: 4px; font-size: 11px; letter-spacing: 1px; pointer-events: none; }
+    /* What got logged on a day: small labeled tags along its bottom edge. */
+    .day-marks {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      bottom: 5px;
+      display: flex;
+      flex-wrap: wrap-reverse;
+      gap: 3px;
+      pointer-events: none;
+    }
+    .log-tag {
+      font-size: 11px;
+      line-height: 16px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--ink-soft);
+      white-space: nowrap;
+    }
+    .log-tag.exercise { background: #F6E3DA; border-color: #EBCBBC; color: var(--ink); }
 
     /* Log steppers at the top of a day's box. */
     .day-log { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -521,7 +542,9 @@
       .legend { padding: 10px 12px 14px; gap: 12px; font-size: 11px; }
       .goals { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 8px 10px 10px; }
       .goal-bal { font-size: 20px; }
-      .day-marks { right: 3px; bottom: 2px; font-size: 9px; letter-spacing: 0; }
+      .day-marks { left: 2px; right: 2px; bottom: 2px; gap: 2px; }
+      .log-tag { font-size: 9px; line-height: 13px; padding: 0 3px; }
+      .log-tag .tag-label { display: none; }
       .modal-content { width: 95%; padding: 18px; }
     }
   </style>
@@ -698,12 +721,12 @@
     // in a day is count 2; a half workout is 0.5). Reading it needs the edit
     // passphrase too.
     const LOG_KINDS = [
-      ['strength_upper', 'Strength · upper', '💪'],
-      ['strength_lower', 'Strength · lower', '🦵'],
-      ['workout', 'Run', '🏃'],      // stored as 'workout'; it was named that first
-      ['yoga', 'Yoga', '🤸'],
-      ['meditation', 'Meditation', '🧘'],
-      ['nosocial', 'No social media', '📵'],
+      ['strength_upper', 'Strength · upper', '💪', 'Upper'],
+      ['strength_lower', 'Strength · lower', '🦵', 'Lower'],
+      ['workout', 'Run', '🏃', 'Run'],      // stored as 'workout'; it was named that first
+      ['yoga', 'Yoga', '🤸', 'Yoga'],
+      ['meditation', 'Meditation', '🧘', 'Meditate'],
+      ['nosocial', 'No social media', '📵', 'No social'],
     ];
     let goalLogs = {};       // { 'YYYY-MM-DD': { strength_upper: 1, workout: 0.5, ... } }
     let goalsUnlocked = false;
@@ -810,7 +833,12 @@
     function dayMarks(dateStr) {
       const log = goalLogs[dateStr];
       if (!log || activeCalendar !== 'personal') return '';
-      return LOG_KINDS.map(([kind, , icon]) => icon.repeat(Math.min(Math.ceil(log[kind] || 0), 3))).join('');
+      return LOG_KINDS.filter(([kind]) => log[kind]).map(([kind, , icon, short]) => {
+        const n = log[kind];
+        const amount = n === 1 ? '' : n === 0.5 ? ' ½' : ` ×${fmtCount(n)}`;
+        const exercise = ['strength_upper', 'strength_lower', 'workout', 'yoga'].includes(kind);
+        return `<span class="log-tag ${exercise ? 'exercise' : ''}">${icon}<span class="tag-label"> ${short}</span>${amount}</span>`;
+      }).join('');
     }
 
     async function fetchGoalLogs() {
