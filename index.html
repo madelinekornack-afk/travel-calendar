@@ -743,7 +743,10 @@
         startTotal: 157, count: l => l.nosocial || 0, buttons: [['nosocial', 'Today']] },
       // 96 meditations by Oct 31, against 10 a month for ten months.
       { label: 'Meditation', per: 'month', target: 10, through: '2026-10-31', start: 96 - 100,
-        startTotal: 96, count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']] },
+        startTotal: 96, count: l => l.meditation || 0, buttons: [['meditation', '+ Meditation']],
+        // The big number is where she'll stand at month end if she does no more:
+        // −6 means six more this month to be even.
+        showMonthEnd: true },
     ];
 
     function addDays(dateStr, n) {
@@ -827,7 +830,9 @@
         return `
           <div class="goal ${s.onTrack ? '' : 'behind'}">
             <div class="goal-top"><span>${goal.label}</span><span class="pace">${s.onTrack ? 'On track' : 'Behind'}</span></div>
-            <div class="goal-bal">${fmtBalance(s.balance)}</div>
+            <div class="goal-bal">${goal.showMonthEnd
+              ? `${fmtBalance(s.balance + s.done - goal.target)} <small>by ${new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</small>`
+              : fmtBalance(s.balance)}</div>
             <div class="goal-sub">${sub}</div>
             <div class="goal-left">${s.left ? `${goal.per === 'day' ? Math.ceil(s.left) + ' days' : fmtCount(Math.ceil(s.left * 2) / 2)} to go by Dec 31` : 'Year goal covered'}</div>
             <div class="goal-add">${buttons}</div>
