@@ -256,6 +256,16 @@
       margin-left: -4px;
     }
 
+    /* A box around today's square, drawn on top so entries don't hide it. */
+    .day.today::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid var(--madeline);
+      pointer-events: none;
+      z-index: 3;
+    }
+
     .month-label {
       font-family: var(--serif);
       font-style: italic;
