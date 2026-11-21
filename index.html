@@ -778,6 +778,15 @@
       return end.toLocaleDateString('en-US', per === 'week' ? { weekday: 'short' } : { month: 'short', day: 'numeric' });
     }
 
+    // A goal year holds whole periods. A week belongs to the year its Saturday
+    // falls in: 2026 began with the Thu Jan 1 – Sat Jan 3 week counted as full,
+    // so the Sun Dec 27 – Sat Jan 2 week belongs to 2027, not 2026.
+    function goalYear(per, today) {
+      const year = periodOf(per, today)[1].slice(0, 4);
+      const [lastStart, lastEnd] = periodOf(per, year + '-12-31');
+      return [periodOf(per, year + '-01-01')[0], lastEnd.slice(0, 4) === year ? lastEnd : addDays(lastStart, -1)];
+    }
+
     function doneBetween(goal, from, to) {
       let n = 0;
       for (let d = from; d <= to; d = addDays(d, 1)) n += goal.count(goalLogs[d] || {});
@@ -788,7 +797,7 @@
     // A new year starts every goal again at zero.
     function goalStatus(goal) {
       const today = toLocalDateStr(new Date());
-      const yearStart = today.slice(0, 4) + '-01-01';
+      const [yearStart, yearEnd] = goalYear(goal.per, today);
       const fromPaper = goal.through >= yearStart;
       const from = fromPaper ? addDays(goal.through, 1) : yearStart;
       let balance = fromPaper ? goal.start : 0;
@@ -807,9 +816,9 @@
       // Still to do this year: what every period left (this one included)
       // asks for, less the surplus and what's done this period already.
       let periodsLeft = 0;
-      for (let p = ps; p <= today.slice(0, 4) + '-12-31'; p = addDays(periodOf(goal.per, p)[1], 1)) periodsLeft++;
+      for (let p = ps; p <= yearEnd; p = addDays(periodOf(goal.per, p)[1], 1)) periodsLeft++;
       const left = Math.max(0, goal.target * periodsLeft - balance - done);
-      return { balance, done, onTrack, total, left };
+      return { balance, done, onTrack, total, left, yearEnd };
     }
 
     // +11.5 reads as +11½, the way it's written on paper.
@@ -847,7 +856,7 @@
             <div class="goal-bal">${goal.per === 'day' ? fmtBalance(s.balance)
               : `${fmtBalance(s.balance + s.done - goal.target)} <small>by ${periodEndLabel(goal.per, today)}</small>`}</div>
             <div class="goal-sub">${sub}</div>
-            <div class="goal-left">${s.left ? `${goal.per === 'day' ? Math.ceil(s.left) + ' days' : fmtCount(Math.ceil(s.left * 2) / 2)} to go by Dec 31` : 'Year goal covered'}</div>
+            <div class="goal-left">${s.left ? `${goal.per === 'day' ? Math.ceil(s.left) + ' days' : fmtCount(Math.ceil(s.left * 2) / 2)} to go by ${new Date(s.yearEnd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : 'Year goal covered'}</div>
             <div class="goal-add">${buttons}</div>
           </div>`;
       }).join('') + focusCard();
