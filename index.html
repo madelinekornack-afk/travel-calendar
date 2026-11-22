@@ -656,12 +656,10 @@
     const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Reading trips is public. Changing them is not: the RLS policies on `trips`
-    // require an `x-trip-key` header matching the edit passphrase, so the anon key
-    // on its own (which anyone can read off this page) can no longer add, edit or
-    // delete anything. The passphrase is kept in this browser only.
+    // Everything is private: the RLS policies on every table require an
+    // `x-trip-key` header matching the passphrase, so the anon key on its own
+    // (which anyone can read off this page) can't read or change anything.
+    // The passphrase is asked for once and kept in this browser only.
     const TRIP_KEY_STORAGE = 'tripEditKey';
     let writeClient = null;
     let writeClientKey = null;
@@ -669,7 +667,7 @@
     function getWriteClient({ prompt = true } = {}) {
       let key = localStorage.getItem(TRIP_KEY_STORAGE);
       if (!key && prompt) {
-        key = (window.prompt('Enter the edit passphrase:') || '').trim();
+        key = (window.prompt('Enter the calendar passphrase:') || '').trim();
         if (!key) return null;
         localStorage.setItem(TRIP_KEY_STORAGE, key);
       }
@@ -690,7 +688,7 @@
       localStorage.removeItem(TRIP_KEY_STORAGE);
       writeClient = null;
       writeClientKey = null;
-      throw new Error('That edit passphrase was not accepted. Try again.');
+      throw new Error('That passphrase was not accepted. Try again.');
     }
 
     // Which calendar is showing. A #maxinomics or #personal link opens that
@@ -1092,8 +1090,14 @@
     };
 
     async function fetchTrips() {
+      const db = getWriteClient();
+      if (!db) {
+        trips = [];
+        showMessage('The calendar is private. Reload the page to enter the passphrase.', 'error');
+        return;
+      }
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from('trips')
           .select('*')
           .eq('calendar', activeCalendar)
