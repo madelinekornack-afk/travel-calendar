@@ -5,6 +5,22 @@
 const SUPABASE_URL = 'https://lcfnmxufyipclcfpteqz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZm5teHVmeWlwY2xjZnB0ZXF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODc1NjEsImV4cCI6MjA4Nzk2MzU2MX0.r-QcVdtX7gTVrKY3ue2OmMm13Nvh2rhvAN2nQ-Uhjv4';
 const HOME_TZ = 'America/Los_Angeles';
+// Departure airports to their time zones, so a flight shows its local
+// departure time. Unknown airports fall back to Pacific with a "PT" label.
+const AIRPORT_TZ = {
+  'America/Los_Angeles': 'SFO OAK SJC SMF LAX BUR LGB SNA ONT SAN PSP SBA SEA PDX LAS RNO',
+  'America/Phoenix': 'PHX TUS',
+  'America/Denver': 'DEN SLC ABQ BOI JAC',
+  'America/Chicago': 'ORD MDW DFW DAL IAH HOU AUS SAT MSP MSY STL MCI BNA MEM MKE',
+  'America/New_York': 'JFK LGA EWR BOS PHL IAD DCA BWI ATL MIA FLL MCO TPA CLT RDU PIT DTW CLE CMH IND CVG BDL PVD BUF SAV CHS RIC ORF',
+  'Pacific/Honolulu': 'HNL OGG KOA LIH',
+  'America/Anchorage': 'ANC',
+  'Europe/London': 'LHR LGW',
+  'Europe/Paris': 'CDG',
+  'America/Mexico_City': 'MEX',
+  'America/Cancun': 'CUN',
+};
+const TZ_OF = Object.fromEntries(Object.entries(AIRPORT_TZ).flatMap(([tz, codes]) => codes.split(' ').map(c => [c, tz])));
 const IS_TRAVEL = /\bflight\b|^stay at\b|\bhotel\b|\bairbnb\b|\bcheck[- ]?in\b/i;
 
 function parseIcs(text) {
@@ -28,33 +44,34 @@ function parseIcs(text) {
 const unescape = s => s.replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1').trim();
 
 // { date: 'YYYY-MM-DD', time: '7:05am' | null, allDay }
-function parseWhen(prop) {
+function parseWhen(prop, tz = HOME_TZ, known = false) {
   if (!prop) return null;
   const v = prop.value;
   const date = `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
   if (prop.VALUE === 'DATE' || v.length === 8) return { date, time: null, allDay: true };
-  let h = +v.slice(9, 11), m = v.slice(11, 13), d = date, tz = '';
+  let h = +v.slice(9, 11), m = v.slice(11, 13), d = date, label = '';
   if (v.endsWith('Z')) {
     const utc = new Date(`${date}T${v.slice(9, 11)}:${m}:00Z`);
     const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-      timeZone: HOME_TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
     }).formatToParts(utc).map(x => [x.type, x.value]));
-    d = `${parts.year}-${parts.month}-${parts.day}`; h = +parts.hour; m = parts.minute; tz = ' PT';
+    d = `${parts.year}-${parts.month}-${parts.day}`; h = +parts.hour; m = parts.minute; label = known ? '' : ' PT';
   }
-  const time = `${h % 12 || 12}:${m}${h < 12 ? 'am' : 'pm'}${tz}`;
+  const time = `${h % 12 || 12}:${m}${h < 12 ? 'am' : 'pm'}${label}`;
   return { date: d, time, allDay: false };
 }
 
 function toTrip(ev) {
   const summary = unescape(ev.SUMMARY?.value || '');
   if (!IS_TRAVEL.test(summary) || ev.RRULE || ev.STATUS?.value === 'CANCELLED') return null;
-  const start = parseWhen(ev.DTSTART);
+  const flight = /\bflight\b/i.test(summary);
+  const code = flight && (unescape(ev.LOCATION?.value || '').match(/\b[A-Z]{3}\b/g) || []).find(c => TZ_OF[c]);
+  const start = parseWhen(ev.DTSTART, code ? TZ_OF[code] : HOME_TZ, !!code);
   if (!start) return null;
   const endRaw = parseWhen(ev.DTEND) || start;
-  const flight = /\bflight\b/i.test(summary);
   let end = endRaw.date;
-  // An all-day DTEND is the day after. Stays keep it: that's checkout day.
-  if (flight && endRaw.allDay && end > start.date) {
+  // An all-day DTEND is the day after the last day (Gmail stays: after checkout).
+  if (endRaw.allDay && end > start.date) {
     const d = new Date(end + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
     end = d.toISOString().slice(0, 10);
   }
