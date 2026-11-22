@@ -20,10 +20,13 @@
       --ink: #2E2A26;
       --ink-soft: #6F665B;
       --muted: #A39886;
-      --madeline: #C8664A;
-      --phil: #3F7F8C;
-      --both: #7A5C99;
-      /* Maxinomics colors mean the kind of entry, not who it's for. */
+      --accent: #C8664A;
+      /* Colors mean the kind of entry, on both tabs. */
+      --trip: #C8664A;
+      --flight: #3F7F8C;
+      --hotel: #7A5C99;
+      --appt: #D9A441;
+      --plans: #6B8E4E;
       --longform: #C8664A;
       --short: #D9A441;
       --shoot: #3F7F8C;
@@ -195,9 +198,11 @@
     .multi-day-event:hover { filter: brightness(0.92); }
 
     /* One color per key, shared by bars, legend swatches and chip dots. */
-    :is(.trip-badge, .legend-swatch, .chip .dot).madeline { background: var(--madeline); }
-    :is(.trip-badge, .legend-swatch, .chip .dot).fiance { background: var(--phil); }
-    :is(.trip-badge, .legend-swatch, .chip .dot).both { background: var(--both); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).trip { background: var(--trip); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).flight { background: var(--flight); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).hotel { background: var(--hotel); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).appt { background: var(--appt); }
+    :is(.trip-badge, .legend-swatch, .chip .dot).plans { background: var(--plans); }
     :is(.trip-badge, .legend-swatch, .chip .dot).longform { background: var(--longform); }
     :is(.trip-badge, .legend-swatch, .chip .dot).short { background: var(--short); }
     :is(.trip-badge, .legend-swatch, .chip .dot).shoot { background: var(--shoot); }
@@ -245,7 +250,7 @@
     }
 
     .day.today .day-number .num {
-      background: var(--madeline);
+      background: var(--accent);
       color: #fff;
       border-radius: 50%;
       width: 22px;
@@ -261,7 +266,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      border: 2px solid var(--madeline);
+      border: 2px solid var(--accent);
       pointer-events: none;
       z-index: 3;
     }
@@ -271,7 +276,7 @@
       font-style: italic;
       font-size: 13px;
       font-weight: 500;
-      color: var(--madeline);
+      color: var(--accent);
     }
 
     .modal {
@@ -411,8 +416,8 @@
       min-width: 0;
     }
     .goal-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--ink-soft); }
-    .goal-top .pace { font-size: 11px; font-weight: 600; color: var(--phil); }
-    .goal.behind .pace, .goal.behind .goal-bal { color: var(--madeline); }
+    .goal-top .pace { font-size: 11px; font-weight: 600; color: var(--flight); }
+    .goal.behind .pace, .goal.behind .goal-bal { color: var(--accent); }
     .goal-bal { font-family: var(--serif); font-size: 24px; font-weight: 500; line-height: 1.15; }
     .goal-sub { font-size: 12px; color: var(--muted); }
     .goal-bal small { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: var(--muted); }
@@ -574,7 +579,7 @@
         <button role="tab" data-calendar="maxinomics" onclick="switchCalendar('maxinomics')">Maxinomics</button>
       </div>
       <div class="header-right">
-        <span class="couple">Maddy &amp; Phil</span>
+        <span class="couple">Maddy</span>
         <div class="nav-buttons">
           <button onclick="previousMonth()" aria-label="Previous week">←</button>
           <button onclick="currentMonth()">Today</button>
@@ -702,11 +707,12 @@
       return 'personal';
     })();
 
-    // Each tab has its own colors. Personal colors say who an entry is for;
-    // Maxinomics colors say what kind of entry it is. The key is stored in
+    // Each tab has its own colors, and each color says what kind of entry
+    // it is. The key is stored in
     // trips.created_by. To add a color: add a line here and a CSS variable.
     const COLORS = {
-      personal: [['madeline', 'Madeline'], ['fiance', 'Phil'], ['both', 'Both']],
+      personal: [['trip', 'Trip'], ['flight', 'Flight'], ['hotel', 'Hotel'],
+                 ['appt', 'Appointment'], ['plans', 'Plans']],
       maxinomics: [['longform', 'Long form'], ['short', 'Short'], ['shoot', 'Shoot'],
                    ['event', 'Event'], ['ad', 'Advertisement']],
     };

@@ -99,7 +99,7 @@ async function main() {
 
   for (const { uid, ...trip } of trips.filter(t => !seenSet.has(t.uid))) {
     const { data, error } = await db.from('trips')
-      .insert({ ...trip, created_by: 'madeline', calendar: 'personal' }).select('id').single();
+      .insert({ ...trip, created_by: trip.name.startsWith('✈️') ? 'flight' : 'hotel', calendar: 'personal' }).select('id').single();
     if (error) throw error;
     const { error: logErr } = await db.from('gcal_imports').insert({ uid, trip_id: data.id });
     if (logErr) throw logErr;
