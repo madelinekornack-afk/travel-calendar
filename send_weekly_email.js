@@ -20,11 +20,10 @@ function getMonday() {
   return new Date(now.getFullYear(), now.getMonth(), diff);
 }
 
-function getColor(who) {
-  if (who === 'madeline') return '#C8664A';
-  if (who === 'fiance') return '#3F7F8C';
-  if (who === 'both') return '#7A5C99';
-  return '#A39886'; // no color picked yet
+// Same colors as the Personal tab: each says what kind of entry it is.
+const COLORS = { trip: '#C8664A', flight: '#3F7F8C', hotel: '#7A5C99', appt: '#D9A441', plans: '#6B8E4E' };
+function getColor(kind) {
+  return COLORS[kind] || '#A39886'; // no color picked yet
 }
 
 function getTripsForDay(dateStr, trips) {
