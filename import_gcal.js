@@ -57,9 +57,17 @@ function parseWhen(prop, tz = HOME_TZ, known = false) {
     }).formatToParts(utc).map(x => [x.type, x.value]));
     d = `${parts.year}-${parts.month}-${parts.day}`; h = +parts.hour; m = parts.minute; label = known ? '' : ' PT';
   }
-  const time = `${h % 12 || 12}:${m}${h < 12 ? 'am' : 'pm'}${label}`;
+  const time = `${h % 12 || 12}${m === '00' ? '' : ':' + m}${h < 12 ? 'am' : 'pm'}${label}`;
   return { date: d, time, allDay: false };
 }
+
+// Short names so entries fit in a calendar day: "✈️ 4:50pm to Vegas", "🏨 W Las Vegas".
+const CITY = { 'San Francisco': 'SF', 'Las Vegas': 'Vegas', 'Washington': 'DC', 'Los Angeles': 'LA', 'New York': 'NYC', 'Philadelphia': 'Philly' };
+const shortCity = s => {
+  const city = (s.match(/flight to ([^(]+)/i)?.[1] || s).trim();
+  return CITY[city] || city;
+};
+const shortStay = s => s.replace(/^stay at\s+/i, '').split(',')[0].replace(/\s+by marriott\b/i, '').trim();
 
 function toTrip(ev) {
   const summary = unescape(ev.SUMMARY?.value || '');
@@ -75,7 +83,7 @@ function toTrip(ev) {
     const d = new Date(end + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
     end = d.toISOString().slice(0, 10);
   }
-  const name = `${flight ? '✈️' : '🏨'} ${summary}${flight && start.time ? ' · ' + start.time : ''}`;
+  const name = flight ? `✈️ ${start.time ? start.time + ' ' : ''}to ${shortCity(summary)}` : `🏨 ${shortStay(summary)}`;
   return { uid: ev.UID?.value, name, start_date: start.date, end_date: end < start.date ? start.date : end };
 }
 
