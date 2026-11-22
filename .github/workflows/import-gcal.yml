@@ -1,0 +1,20 @@
+name: Import flights and hotels from Google Calendar
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'   # every 3 hours
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install @supabase/supabase-js
+      - run: node import_gcal.js
+        env:
+          GCAL_ICS_URL: ${{ secrets.GCAL_ICS_URL }}
+          TRIP_KEY: ${{ secrets.TRIP_KEY }}
