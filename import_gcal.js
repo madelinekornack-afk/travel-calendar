@@ -98,6 +98,7 @@ async function main() {
   const trips = events.map(toTrip).filter(t => t && t.uid && t.end_date >= since);
   console.log(`${events.length} events in feed, ${trips.length} upcoming flights/hotels.`);
   if (!trips.length) return;
+  let added = 0;
 
   const { createClient } = require('@supabase/supabase-js');
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { 'x-trip-key': key } } });
@@ -111,8 +112,10 @@ async function main() {
     if (error) throw error;
     const { error: logErr } = await db.from('gcal_imports').insert({ uid, trip_id: data.id });
     if (logErr) throw logErr;
-    console.log(`Added: ${trip.name} (${trip.start_date} – ${trip.end_date})`);
+    added++;
   }
+  // Counts only: the run logs of this public repo are visible to anyone.
+  console.log(`Added ${added}.`);
 }
 
 if (require.main === module) main().catch(e => { console.error(e.message || e); process.exit(1); });
