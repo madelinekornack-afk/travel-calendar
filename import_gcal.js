@@ -61,11 +61,24 @@ function parseWhen(prop, tz = HOME_TZ, known = false) {
   return { date: d, time, allDay: false };
 }
 
-// Short names so entries fit in a calendar day: "✈️ 4:50pm to Vegas", "🏨 W Las Vegas".
+// Short names so entries fit in a calendar day: "✈️ 4:50pm United to Vegas", "🏨 W Las Vegas".
 const CITY = { 'San Francisco': 'SF', 'Las Vegas': 'Vegas', 'Washington': 'DC', 'Los Angeles': 'LA', 'New York': 'NYC', 'Philadelphia': 'Philly' };
 const shortCity = s => {
-  const city = (s.match(/flight to ([^(]+)/i)?.[1] || s).trim();
+  // "Flight to San Francisco, CA, US (UA 276)" -> "San Francisco" -> "SF"
+  const city = (s.match(/flight to ([^(]+)/i)?.[1] || s).split(',')[0].trim();
   return CITY[city] || city;
+};
+// Gmail titles carry the flight code: "Flight to Las Vegas (UA 1434)".
+// Unknown codes show as the two-letter code.
+const AIRLINE = {
+  AA: 'American', UA: 'United', DL: 'Delta', WN: 'Southwest', AS: 'Alaska', B6: 'JetBlue',
+  F9: 'Frontier', NK: 'Spirit', HA: 'Hawaiian', G4: 'Allegiant', SY: 'Sun Country', MX: 'Breeze',
+  AC: 'Air Canada', BA: 'British Airways', VS: 'Virgin Atlantic', AF: 'Air France', KL: 'KLM',
+  LH: 'Lufthansa', AM: 'Aeroméxico',
+};
+const airline = s => {
+  const code = s.match(/\(([A-Z0-9]{2}) ?\d{1,4}\)/)?.[1];
+  return code ? AIRLINE[code] || code : '';
 };
 const shortStay = s => s.replace(/^stay at\s+/i, '').split(',')[0].replace(/\s+by marriott\b/i, '').trim();
 
@@ -83,7 +96,9 @@ function toTrip(ev) {
     const d = new Date(end + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
     end = d.toISOString().slice(0, 10);
   }
-  const name = flight ? `✈️ ${start.time ? start.time + ' ' : ''}to ${shortCity(summary)}` : `🏨 ${shortStay(summary)}`;
+  const name = flight
+    ? `✈️ ${[start.time, airline(summary), 'to ' + shortCity(summary)].filter(Boolean).join(' ')}`
+    : `🏨 ${shortStay(summary)}`;
   return { uid: ev.UID?.value, name, start_date: start.date, end_date: end < start.date ? start.date : end };
 }
 
